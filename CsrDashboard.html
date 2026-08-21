@@ -1,0 +1,37 @@
+<div class="page-container csr-page-container">
+  <div class="page-header">
+    <div>
+      <h1 id="csrDashboardHeading">CSR Dashboard</h1>
+      <p>Monitor calling workload, follow-ups, and closure performance.</p>
+    </div>
+    <button id="btnRefreshCsrDashboard" class="secondary-btn" type="button">Refresh</button>
+  </div>
+
+  <div class="stats-grid csr-metric-grid">
+    <div class="stat-card stat-card-blue"><span>Open Tickets</span><strong id="csrMetricOpen">0</strong></div>
+    <div class="stat-card stat-card-orange"><span>Awaiting Assignment</span><strong id="csrMetricUnassigned">0</strong></div>
+    <div class="stat-card stat-card-purple"><span>Assigned / In Progress</span><strong id="csrMetricAssigned">0</strong></div>
+    <div class="stat-card stat-card-green"><span>Closed Tickets</span><strong id="csrMetricClosed">0</strong></div>
+    <div class="stat-card stat-card-slate"><span>Calls Completed</span><strong id="csrMetricCalls">0</strong></div>
+    <div class="stat-card stat-card-purple"><span>Average Resolution Time</span><strong id="csrMetricAverageResolution">-</strong></div>
+    <div class="stat-card stat-card-blue csrAgentOnly hidden"><span>My Calling Rank</span><strong id="csrMetricMyRank">-</strong></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">My Active Calling Work</div>
+    <div class="card-body table-responsive">
+      <table class="table"><thead><tr>
+        <th>CSR Ticket ID</th><th>Order Number</th><th>Rider</th><th>Zone</th><th>LM Hub</th><th>Current Status</th><th>Last Activity</th>
+      </tr></thead><tbody id="csrDashboardWorkBody"><tr><td colspan="7">No active work.</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <div id="csrAgentPerformanceCard" class="card csrAdminOnly hidden">
+    <div class="card-header">Calling Agent Performance</div>
+    <div class="card-body table-responsive">
+      <table class="table"><thead><tr><th>Calling Agent</th><th class="center">Open Work</th><th class="center">Calls Completed</th><th class="center">Average Call Time</th></tr></thead>
+      <tbody id="csrAgentPerformanceBody"><tr><td colspan="4">No CSR calling agents found.</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
