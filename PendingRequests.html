@@ -1,0 +1,199 @@
+<!-- ============================================================
+     PENDING REQUESTS
+============================================================= -->
+
+<div class="page-container managerOnly">
+
+    <!-- ===================================================== -->
+    <!-- Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                Pending Requests
+
+            </h1>
+
+            <p>
+
+                Review and assign pending rider requests.
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <button
+                id="btnRefreshPending"
+                class="secondary-btn">
+
+                Refresh
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Filters -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label>
+
+                        Search
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="txtPendingSearch"
+                        class="form-control"
+                        placeholder="Submission ID / Order Number / Rider">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Zone
+
+                    </label>
+
+                    <select
+                        id="ddlPendingZone"
+                        class="form-control">
+
+                        <option value="">
+
+                            All Zones
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Warehouse
+
+                    </label>
+
+                    <select
+                        id="ddlPendingWarehouse"
+                        class="form-control">
+
+                        <option value="">
+
+                            All Warehouses
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        LM Hub
+
+                    </label>
+
+                    <select
+                        id="ddlPendingHub"
+                        class="form-control">
+
+                        <option value="">
+
+                            All LM Hubs
+
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Pending Table -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table
+                    id="pendingTable"
+                    class="table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Submission ID</th>
+                            <th>Order Number</th>
+                            <th>Rider</th>
+                            <th>Zone</th>
+                            <th>Warehouse</th>
+                            <th>LM Hub</th>
+                            <th>Reason</th>
+                            <th>Status</th>
+                            <th>Submitted On</th>
+                            <th>Action</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="pendingTableBody">
+
+                        <tr>
+
+                            <td colspan="10">
+
+                                No pending requests found.
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
