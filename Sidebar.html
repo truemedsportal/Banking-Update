@@ -1,0 +1,57 @@
+<button
+  id="btnMobileMenuToggle"
+  class="mobile-menu-btn"
+  type="button"
+  aria-controls="sidebar"
+  aria-expanded="false"
+  aria-label="Open navigation">&#9776;</button>
+<button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Close navigation" tabindex="-1"></button>
+
+<aside id="sidebar" class="sidebar" aria-label="Primary navigation">
+  <div class="sidebar-logo">
+    <img src="" alt="Configured application logo" class="sidebar-logo-img" width="170" height="170" decoding="async" data-sidebar-logo>
+    <div class="sidebar-title">
+      <h1 data-app-company></h1>
+      <p data-app-name></p>
+    </div>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-avatar" id="userAvatar" aria-label="Logged-in user avatar"></div>
+    <div class="user-details">
+      <div id="loggedUserName" class="user-name">User Name</div>
+      <div id="loggedUserRole" class="user-role">Rider</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-menu">
+    <button type="button" class="menu-item active rtoOnly" id="menuDashboard" data-page="riderDashboard"><span>&#128202;</span><span>Dashboard</span></button>
+    <button type="button" class="menu-item rtoOnly" id="menuSubmission" data-page="riderSubmission"><span>&#128230;</span><span>New Submission</span></button>
+    <button type="button" class="menu-item rtoOnly" id="menuMySubmissions" data-page="mySubmission"><span>&#128203;</span><span>My Submissions</span></button>
+    <button type="button" class="menu-item rtoOnly" id="menuAttendance" data-page="attendance" data-rto-roles="RIDER" hidden><span>&#128197;</span><span>Attendance</span></button>
+    <button type="button" class="menu-item managerOnly rtoOnly" id="menuRegularization" data-page="regularization" data-rto-roles="HUB_MANAGER,ADMIN,SUPER_ADMIN" hidden><span>&#9989;</span><span>Regularization</span><span id="regularizationBadge" class="badge hidden">0</span></button>
+    <button type="button" class="menu-item rtoOnly" id="menuRoster" data-page="roster" title="View roster or upload a team roster"><span>&#128197;</span><span>Roster &amp; Leave</span><span class="menu-tag">Upload</span></button>
+    <button type="button" class="menu-item managerOnly rtoOnly" id="menuPending" data-page="pendingRequest" data-rto-roles="HUB_MANAGER,ADMIN,SUPER_ADMIN" hidden><span>&#9203;</span><span>Pending Requests</span><span id="pendingRequestBadge" class="badge hidden">0</span></button>
+    <button type="button" class="menu-item managerOnly rtoOnly" id="menuReview" data-page="reviewRequest" data-rto-roles="HUB_MANAGER,ADMIN,SUPER_ADMIN" hidden><span>&#9989;</span><span>Review Requests</span></button>
+    <button type="button" class="menu-item adminOnly rtoOnly" id="menuAdmin" data-page="adminDashboard" data-rto-roles="ADMIN,SUPER_ADMIN" hidden><span>&#128188;</span><span>Admin Dashboard</span></button>
+    <button type="button" class="menu-item adminOnly rtoOnly" id="menuRepository" data-page="adminRepository" data-rto-roles="ADMIN,SUPER_ADMIN" hidden><span>&#128218;</span><span>Repository</span></button>
+    <button type="button" class="menu-item managerOnly rtoOnly" id="menuBanking" data-page="banking" data-rto-roles="HUB_MANAGER,ADMIN,SUPER_ADMIN" hidden><span>&#127974;</span><span>Banking</span></button>
+    <button type="button" class="menu-item csrOnly" id="menuCsrDashboard" data-page="csrDashboard" hidden><span>&#127911;</span><span>CSR Dashboard</span></button>
+    <button type="button" class="menu-item csrAgentOnly" id="menuCsrMyQueue" data-page="csrPending" hidden><span>&#128222;</span><span>My Calling Queue</span></button>
+    <button type="button" class="menu-item csrAdminOnly" id="menuCsrPending" data-page="csrPending" hidden><span>&#128203;</span><span>CSR Pending &amp; Assign</span></button>
+    <button type="button" class="menu-item csrAdminOnly" id="menuCsrRepository" data-page="csrRepository" hidden><span>&#128218;</span><span>CSR Repository</span></button>
+
+    <!-- User Management: visible only to Hub Manager, Manager, Admin and Super Admin. -->
+    <button type="button" class="menu-item managerOnly rtoOnly" id="menuUserManagement" data-page="userManagement" data-rto-roles="HUB_MANAGER,ADMIN,SUPER_ADMIN" hidden><span>&#128101;</span><span>User Management</span></button>
+
+    <button type="button" class="menu-item" id="menuUserManual" data-page="userManual"><span>&#128214;</span><span>User Manual</span></button>
+    <button type="button" class="menu-item" id="menuNotification" data-page="notifications"><span>&#128276;</span><span>Notifications</span><span id="notificationBadge" class="badge hidden">0</span></button>
+    <button type="button" class="menu-item" id="menuSettings" data-page="settings"><span>&#9881;</span><span>Settings</span></button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div id="appVersion" data-app-version></div>
+    <div id="frontendBuildVersion" class="frontend-build-version">Frontend build 2.4.3</div>
+    <button id="btnLogout" class="logout-btn" type="button">Logout</button>
+  </div>
+</aside>
