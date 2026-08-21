@@ -1,0 +1,38 @@
+<div class="page-container csr-page-container">
+  <div class="page-header">
+    <div><h1 id="csrQueueHeading">CSR Pending &amp; Assignment</h1><p>Filter tickets, select many, and safely assign the next calling attempt.</p></div>
+    <div class="page-header-actions">
+      <button id="btnSyncCsrTickets" class="secondary-btn csrAdminOnly" type="button" hidden>Sync NDR Tickets</button>
+      <button id="btnRefreshCsrQueue" class="secondary-btn" type="button">Refresh</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body"><div class="form-grid csr-filter-grid">
+      <div class="form-group"><label>Search</label><input id="txtCsrSearch" class="form-control" placeholder="Ticket ID / Submission ID / Order Number"></div>
+      <div class="form-group"><label>Zone</label><select id="ddlCsrZone" class="form-control"><option value="">All Zones</option></select></div>
+      <div class="form-group"><label>Warehouse</label><select id="ddlCsrWarehouse" class="form-control"><option value="">All Warehouses</option></select></div>
+      <div class="form-group"><label>LM Hub</label><select id="ddlCsrHub" class="form-control"><option value="">All LM Hubs</option></select></div>
+      <div class="form-group csrAdminOnly"><label>Final Status</label><select id="ddlCsrFinalStatus" class="form-control"><option value="">Open and Closed</option><option value="OPEN">Open</option><option value="CLOSED">Closed</option></select></div>
+      <div class="form-group csrAdminOnly"><label>Created from</label><input id="dtCsrCreatedFrom" class="form-control" type="date"></div>
+      <div class="form-group csrAdminOnly"><label>Created to</label><input id="dtCsrCreatedTo" class="form-control" type="date"></div>
+    </div></div>
+  </div>
+
+  <div id="csrAssignmentPanel" class="card csrAdminOnly hidden">
+    <div class="card-header">Bulk Assignment</div>
+    <div class="card-body"><div class="form-grid csr-assignment-grid">
+      <div class="form-group"><label>Calling Attempt</label><select id="ddlCsrCallSlot" class="form-control"><option value="1">Call 1</option><option value="2">Call 2</option><option value="3">Call 3</option></select></div>
+      <div class="form-group"><label>Calling Agent</label><select id="ddlCsrCallingAgent" class="form-control"><option value="">Select Calling Agent</option></select></div>
+      <div class="form-group csr-action-group"><label>&nbsp;</label><button id="btnAssignCsrTickets" class="primary-btn" type="button">Assign Selected Tickets</button></div>
+    </div><p class="form-hint">Call 2 becomes available only after Call 1 is completed; Call 3 becomes available only after Call 2 is completed.</p></div>
+  </div>
+
+  <div class="card"><div class="card-body table-responsive">
+    <table class="table"><thead><tr>
+      <th class="csrAdminOnly"><input id="chkCsrSelectAll" type="checkbox" aria-label="Select all CSR tickets"></th>
+      <th>CSR Ticket ID</th><th>Submission ID</th><th>Order Number</th><th>Rider</th><th>Zone</th><th>Warehouse</th><th>LM Hub</th><th>Current Status</th><th>Assigned Agent</th><th>Last Activity</th><th>Action</th>
+    </tr></thead><tbody id="csrQueueBody"><tr><td colspan="12">No CSR tickets found.</td></tr></tbody></table>
+  </div></div>
+</div>
+
