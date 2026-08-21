@@ -1,0 +1,368 @@
+<!-- ============================================================
+     NEW SUBMISSION
+============================================================= -->
+
+<div id="submissionContainer" class="submission-container">
+
+    <!-- ===================================================== -->
+    <!-- Page Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                New Submission
+
+            </h1>
+
+            <p>
+
+                Submit a new delivery exception request.
+
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- Submission Form -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="form-grid">
+
+                <!-- Order Number -->
+
+                <div class="form-group">
+
+                    <label>
+
+                        Order Number
+                        <span class="required">*</span>
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="txtOrderNumber"
+                        class="form-control"
+                        maxlength="11"
+                        autocomplete="off"
+                        placeholder="Enter Order Number">
+
+                    <small>
+
+                        Enter up to 11 digits.
+
+                    </small>
+
+                </div>
+
+
+                <!-- Reason -->
+
+                <div class="form-group reason-search-group">
+
+                    <label>
+
+                        Reason
+                        <span class="required">*</span>
+
+                    </label>
+
+                    <!-- Kept for existing validation and submission logic. -->
+                    <select
+                        id="ddlReason"
+                        class="form-control reason-source-select"
+                        tabindex="-1"
+                        aria-hidden="true">
+
+                        <option value="">
+
+                            Select Reason
+
+                        </option>
+
+                    </select>
+
+                    <input
+                        type="search"
+                        id="txtReasonSearch"
+                        class="form-control reason-search-input"
+                        autocomplete="off"
+                        placeholder="Loading reasons..."
+                        aria-label="Search and select a reason"
+                        aria-autocomplete="list"
+                        aria-controls="reasonSearchList"
+                        disabled>
+
+                    <div
+                        id="reasonSearchList"
+                        class="reason-search-list hidden"
+                        role="listbox"
+                        aria-label="Select a reason">
+
+                        <p class="reason-search-empty">Loading reasons...</p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Mandatory Proof -->
+
+                <div class="form-group" id="mandatoryProofGroup">
+
+                    <label>
+
+                        Mandatory Proof
+                        <span class="required">*</span>
+
+                    </label>
+
+                <input
+                    type="file"
+                    id="mandatoryProof"
+                    class="form-control"
+                    accept="image/*,video/*,audio/*,application/pdf">
+
+                <small>
+
+                    Supported: Image, Video, Audio & PDF
+
+                </small>
+
+                <div
+                    id="mandatoryProgress"
+                    class="upload-progress hidden">
+
+                    <div class="upload-progress-bar"></div>
+
+                </div>
+
+                </div>
+
+
+                <!-- Optional Proof -->
+
+                <div class="form-group" id="optionalProofGroup">
+
+                    <label>
+
+                        Optional Proof
+
+                    </label>
+
+                <input
+                    type="file"
+                    id="optionalProof"
+                    class="form-control"
+                    accept="image/*,video/*,audio/*,application/pdf">
+
+                <small>
+
+                    Supported: Image, Video, Audio & PDF
+
+                </small>
+
+                <div
+                    id="optionalProgress"
+                    class="upload-progress hidden">
+
+                    <div class="upload-progress-bar"></div>
+
+                </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+<!-- =====================================================
+     Attachment Preview
+===================================================== -->
+
+<div id="attachmentPreviewCard" class="card">
+
+    <div class="card-header">
+
+        Attachment Preview
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="preview-grid">
+
+            <div>
+
+                <p>
+
+                    Mandatory Proof
+
+                </p>
+
+                <div
+                    id="mandatoryPreview"
+                    class="file-preview preview-empty">
+
+                    <span class="file-preview-placeholder">No file selected</span>
+
+                </div>
+
+            </div>
+
+            <div>
+
+                <p>
+
+                    Optional Proof
+
+                </p>
+
+                <div
+                    id="optionalPreview"
+                    class="file-preview preview-empty">
+
+                    <span class="file-preview-placeholder">No file selected</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <!-- ===================================================== -->
+    <!-- Action Buttons -->
+    <!-- ===================================================== -->
+
+    <div class="button-row">
+
+        <button
+            id="btnSubmitRequest"
+            class="primary-btn">
+
+            Submit Request
+
+        </button>
+
+        <button
+            id="btnResetSubmission"
+            class="secondary-btn">
+
+            Reset
+
+        </button>
+
+    </div>
+
+
+    <!-- =====================================================
+         ADMIN BULK UPLOAD
+         One file is always submitted to one portal-selected location.
+    ====================================================== -->
+
+    <div id="bulkUploadSection" class="card adminOnly hidden">
+
+        <div class="card-header">
+
+            Bulk Upload — Direct Approval
+
+        </div>
+
+        <div class="card-body">
+
+            <p>
+
+                Use the approved three-column template. The selected location is
+                controlled by your access mapping, so it cannot be typed incorrectly
+                in the file.
+
+            </p>
+
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label>Zone <span class="required">*</span></label>
+
+                    <select id="ddlBulkZone" class="form-control"></select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Warehouse <span class="required">*</span></label>
+
+                    <select id="ddlBulkWarehouse" class="form-control"></select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>LM Hub <span class="required">*</span></label>
+
+                    <select id="ddlBulkHub" class="form-control"></select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Bulk file <span class="required">*</span></label>
+
+                    <input
+                        type="file"
+                        id="fileBulkSubmission"
+                        class="form-control"
+                        accept=".csv,.xlsx,.xls,.ods,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet">
+
+                    <small>
+
+                        Accepted: CSV, Excel (.xlsx/.xls) and OpenDocument Spreadsheet (.ods).
+                        LibreOffice and WPS files should be saved in one of these formats.
+
+                    </small>
+
+                </div>
+
+            </div>
+
+            <div class="button-row">
+
+                <button id="btnDownloadBulkTemplate" type="button" class="secondary-btn">
+
+                    Download Template
+
+                </button>
+
+                <button id="btnBulkUpload" type="button" class="primary-btn">
+
+                    Upload &amp; Approve
+
+                </button>
+
+            </div>
+
+            <p id="bulkUploadSummary" class="hidden"></p>
+
+        </div>
+
+    </div>
+
+</div>
+
