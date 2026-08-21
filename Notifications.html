@@ -1,0 +1,124 @@
+<!-- ============================================================
+     NOTIFICATIONS
+============================================================= -->
+
+<div id="notificationsContainer" class="page-container">
+
+    <!-- ===================================================== -->
+    <!-- Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                Notifications
+
+            </h1>
+
+            <p>
+
+                View your latest system notifications.
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <button
+                id="btnRefreshNotifications"
+                class="secondary-btn">
+
+                Refresh
+
+            </button>
+
+            <button
+                id="btnMarkAllRead"
+                class="primary-btn">
+
+                Mark All Read
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Notification List -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div
+                id="notificationList"
+                class="notification-list">
+
+                <div class="notification-empty">
+
+                    No notifications available.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ============================================================
+     NOTIFICATION TEMPLATE
+============================================================= -->
+
+<template id="notificationTemplate">
+
+    <div class="notification-item unread">
+
+        <div class="notification-content">
+
+            <div class="notification-title">
+
+                Notification Title
+
+            </div>
+
+            <div class="notification-message">
+
+                Notification Message
+
+            </div>
+
+            <div class="notification-footer">
+
+                <span class="notification-time">
+
+                    Date Time
+
+                </span>
+
+                <button
+                    class="secondary-btn btnNotificationRead">
+
+                    Mark Read
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</template>
+
