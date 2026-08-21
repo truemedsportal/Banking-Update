@@ -1,0 +1,129 @@
+<style>
+  .um-card { border: 1px solid #e3e9f2; border-radius: 16px; box-shadow: 0 8px 24px rgba(17,49,88,.08); overflow: hidden; }
+  .um-card .card-body { padding: 24px; }
+  .um-toolbar { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:18px; }
+  .um-note { color:#637083; font-size:13px; margin:4px 0 0; }
+  .um-status { display:block; min-height:18px; font-size:12px; margin-top:5px; }
+  .um-status.available { color:#087a3c; }
+  .um-status.unavailable { color:#c62828; }
+  .um-table-wrap { overflow:auto; border:1px solid #e6ebf2; border-radius:12px; }
+  .um-table { width:100%; min-width:1050px; border-collapse:collapse; font-size:14px; }
+  .um-table th { background:#f5f8fc; color:#475569; text-align:left; padding:13px 14px; white-space:nowrap; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+  .um-table td { padding:13px 14px; border-top:1px solid #edf1f6; color:#293548; vertical-align:middle; }
+  .um-table tbody tr:hover { background:#f8fbff; }
+  .um-pill { display:inline-block; padding:4px 9px; border-radius:99px; background:#e9f7ef; color:#16733d; font-size:12px; font-weight:700; }
+  .um-empty { text-align:center; color:#6b7280; padding:28px !important; }
+  .um-search { width:min(360px,100%); }
+  .um-form-actions { margin-top:24px; display:flex; align-items:center; gap:10px; }
+  .um-photo-help { display:block; color:#637083; font-size:12px; margin-top:5px; line-height:1.35; }
+  @media (max-width:768px) {
+    .um-card .card-body { padding:18px; }
+    .um-toolbar { align-items:stretch; flex-direction:column; }
+    .um-search { width:100%; }
+  }
+</style>
+
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h2>User Management</h2>
+      <p>Create and manage users only within your authorised scope.</p>
+    </div>
+  </div>
+
+  <div class="card um-card">
+    <div class="card-body">
+      <div class="um-toolbar">
+        <div>
+          <h3 id="managedFormTitle">Create User</h3>
+          <p class="um-note">Username is the login ID. Rider / Calling Agent Name is the display name saved in User Master.</p>
+        </div>
+      </div>
+
+      <form id="managedUserForm" novalidate>
+        <input id="managedOriginalUsername" type="hidden">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Username (Login ID) <span class="required">*</span></label>
+            <input id="managedUsername" class="form-control" required autocomplete="off" maxlength="50">
+            <small id="managedUsernameAvailability" class="um-status" aria-live="polite"></small>
+          </div>
+          <div class="form-group">
+            <label>Rider / Calling Agent Name <span class="required">*</span></label>
+            <input id="managedName" class="form-control" required autocomplete="off" maxlength="100">
+          </div>
+          <div class="form-group">
+            <label>Employee ID <span class="required">*</span></label>
+            <input id="managedEmployeeId" class="form-control" required autocomplete="off" maxlength="50">
+            <small id="managedEmployeeIdAvailability" class="um-status" aria-live="polite"></small>
+          </div>
+          <div class="form-group">
+            <label>Role <span class="required">*</span></label>
+            <select id="managedRole" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label id="managedAccessLabel">Access Scope</label>
+            <select id="managedAccess" class="form-control"></select>
+            <small id="managedAccessHelp" class="um-note">Select a role to choose its access scope.</small>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="managedStatus" class="form-control"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+          </div>
+          <div class="form-group">
+            <label>Zone <span class="required">*</span></label>
+            <select id="managedZone" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Warehouse <span class="required">*</span></label>
+            <select id="managedWarehouse" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>LM Hub <span class="required">*</span></label>
+            <select id="managedHub" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Registered Email</label>
+            <input id="managedEmail" type="email" class="form-control" autocomplete="off" maxlength="150">
+          </div>
+          <div class="form-group">
+            <label>Vendor Name <span class="required">*</span></label>
+            <select id="managedVendor" class="form-control"></select>
+            <small class="um-note">Required when the selected role is Rider.</small>
+          </div>
+          <div class="form-group">
+            <label>Upload User Photo</label>
+            <input id="managedPhoto" type="file" class="form-control" accept="image/jpeg,image/png,image/webp">
+            <small class="um-photo-help">Optional. JPG, PNG or WEBP; the portal compresses the image before upload.</small>
+          </div>
+          <div class="form-group">
+            <label id="managedPasswordLabel">Initial Access Code <span class="required">*</span></label>
+            <input id="managedPassword" type="text" class="form-control" required autocomplete="off" placeholder="Example: 12345" maxlength="100">
+          </div>
+        </div>
+        <div class="um-form-actions">
+          <button type="submit" class="primary-btn" id="managedSubmit">Create User</button>
+          <button type="button" class="secondary-btn" id="managedCancel">Clear</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card um-card" style="margin-top:20px">
+    <div class="card-body">
+      <div class="um-toolbar">
+        <div>
+          <h3>Existing Users</h3>
+          <p class="um-note">Only users you are authorised to manage are listed here.</p>
+        </div>
+        <input id="managedUserSearch" class="form-control um-search" placeholder="Search login ID or employee ID" autocomplete="off">
+      </div>
+      <div class="um-table-wrap">
+        <table class="um-table">
+          <thead><tr><th>Login ID</th><th>Rider / Agent Name</th><th>Employee ID</th><th>Role</th><th>Scope</th><th>Zone</th><th>Warehouse</th><th>LM Hub</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="managedUserRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
