@@ -1,0 +1,91 @@
+<!-- Dashboard: riders can switch between their attendance and submission workspaces. -->
+<div id="dashboardContainer" class="dashboard-container">
+  <div class="page-header dashboard-page-header">
+    <div>
+      <div class="page-eyebrow">WORKSPACE</div>
+      <h1>Dashboard</h1>
+      <p>Welcome back, <span id="dashboardUserName">User</span></p>
+    </div>
+    <div class="dashboard-header-actions">
+      <div id="riderDashboardSwitcher" class="dashboard-switcher hidden" role="group" aria-label="Choose dashboard">
+        <button type="button" class="dashboard-switch active" data-dashboard-view="attendance">Attendance dashboard</button>
+        <button type="button" class="dashboard-switch" data-dashboard-view="submissions">Submission dashboard</button>
+      </div>
+      <button id="btnRefreshDashboard" class="secondary-btn" type="button">Refresh</button>
+    </div>
+  </div>
+
+  <section id="attendanceDashboardPanel" class="dashboard-panel attendance-dashboard-panel hidden">
+    <div class="panel-header attendance-panel-header">
+      <div>
+        <strong>Attendance overview</strong>
+        <span>Track your requests and approved records in one place.</span>
+      </div>
+      <button type="button" class="primary-btn attendance-open-button" onclick="navigate('attendance')">Open attendance</button>
+    </div>
+    <div class="attendance-metric-grid">
+      <article class="attendance-metric pending-attendance">
+        <span>Pending attendance</span>
+        <strong id="attendanceDashboardPendingAttendance">0</strong>
+        <small>Awaiting approval</small>
+      </article>
+      <article class="attendance-metric pending-km">
+        <span>Pending KM</span>
+        <strong id="attendanceDashboardPendingKm">0</strong>
+        <small>Awaiting approval</small>
+      </article>
+      <article class="attendance-metric approved-attendance">
+        <span>Approved attendance</span>
+        <strong id="attendanceDashboardApprovedAttendance">0</strong>
+        <small>Marked present</small>
+      </article>
+      <article class="attendance-metric approved-km">
+        <span>Approved KM</span>
+        <strong id="attendanceDashboardApprovedKm">0</strong>
+        <small>Approved KM entries</small>
+      </article>
+    </div>
+    <div class="panel-body attendance-history-body">
+      <div class="table-responsive">
+        <table class="table attendance-summary-table">
+          <thead><tr><th>Work date</th><th>Request</th><th>Status</th><th>Total KM</th></tr></thead>
+          <tbody id="attendanceDashboardRecent"><tr><td colspan="4" class="attendance-empty">No attendance activity yet.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="attendance-calendar-card">
+      <div class="attendance-calendar-header"><div><strong>My monthly attendance</strong><span>Present, pending and rejected requests by work date.</span></div><div class="attendance-calendar-controls"><button type="button" class="secondary-btn calendar-nav" onclick="changeAttendanceCalendarMonth(-1)" aria-label="Previous month">‹</button><strong id="attendanceCalendarMonth">Loading…</strong><button type="button" class="secondary-btn calendar-nav" onclick="changeAttendanceCalendarMonth(1)" aria-label="Next month">›</button></div></div>
+      <div id="riderAttendanceCalendar" class="attendance-calendar-scroll"><div class="attendance-calendar-loading">Loading monthly attendance…</div></div>
+      <div class="attendance-calendar-legend"><span><i class="calendar-key present"></i>Present</span><span><i class="calendar-key pending"></i>Pending approval</span><span><i class="calendar-key absent"></i>Absent</span><span><i class="calendar-key leave"></i>Leave</span><span><i class="calendar-key rejected"></i>Rejected request</span><span><i class="calendar-key empty"></i>No record</span></div>
+    </div>
+  </section>
+
+  <section id="submissionDashboardSection" class="submission-dashboard-section">
+    <div class="dashboard-cards">
+      <div class="dashboard-card pending"><div class="card-title">Pending</div><div id="dashboardPending" class="card-value">0</div></div>
+      <div class="dashboard-card under-review"><div class="card-title">Under Review</div><div id="dashboardUnderReview" class="card-value">0</div></div>
+      <div class="dashboard-card approved"><div class="card-title">Approved</div><div id="dashboardApproved" class="card-value">0</div></div>
+      <div class="dashboard-card rejected"><div class="card-title">Rejected</div><div id="dashboardRejected" class="card-value">0</div></div>
+      <div class="dashboard-card total"><div class="card-title">Total</div><div id="dashboardTotal" class="card-value">0</div></div>
+    </div>
+    <div class="dashboard-grid">
+      <div class="dashboard-panel">
+        <div class="panel-header">Recent Requests</div>
+        <div class="panel-body"><table class="table"><thead><tr><th>Submission ID</th><th>Order Number</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentSubmissionTable"><tr><td colspan="4">No Records Found</td></tr></tbody></table></div>
+      </div>
+      <div class="dashboard-panel">
+        <div class="panel-header">Recent Notifications</div>
+        <div id="dashboardNotifications" class="notification-list empty-notification"><div class="notification-empty-title">No notifications</div><div class="notification-empty-subtitle">You're all caught up.</div></div>
+      </div>
+    </div>
+    <div class="dashboard-panel">
+      <div class="panel-header">Quick Actions</div>
+      <div class="quick-actions">
+        <button id="quickNewSubmission" class="primary-btn" type="button">New Submission</button>
+        <button id="quickMySubmissions" class="secondary-btn" type="button">My Submissions</button>
+        <button id="quickPending" class="secondary-btn managerOnly hidden" type="button">Pending Requests</button>
+        <button id="quickRepository" class="secondary-btn adminOnly hidden" type="button">Repository Search</button>
+      </div>
+    </div>
+  </section>
+</div>
