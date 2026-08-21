@@ -1,0 +1,186 @@
+<!-- ============================================================
+     MY SUBMISSIONS
+============================================================= -->
+
+<div id="mySubmissionContainer" class="page-container">
+
+    <!-- ===================================================== -->
+    <!-- Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                My Submissions
+
+            </h1>
+
+            <p>
+
+                View and track all your submitted requests.
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <button
+                id="btnRefreshMySubmissions"
+                class="secondary-btn">
+
+                Refresh
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Filters -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label>
+
+                        Search
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="txtSearchSubmission"
+                        class="form-control"
+                        placeholder="Submission ID / Order Number">
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+
+                        Status
+
+                    </label>
+
+                    <select
+                        id="ddlSubmissionStatus"
+                        class="form-control">
+
+                        <option value="">
+
+                            All
+
+                        </option>
+
+                            <option value="Submitted">
+
+                                Submitted
+
+                            </option>
+
+                            <option value="Under Review">
+
+                                Under Review
+
+                            </option>
+
+                            <option value="Approved">
+
+                                Approved
+
+                            </option>
+
+                            <option value="Rejected">
+
+                                Rejected
+
+                            </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Table -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table
+                    id="mySubmissionTable"
+                    class="table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>Submission ID</th>
+
+                            <th>Order Number</th>
+
+                            <th>Reason</th>
+
+                            <th>Status</th>
+
+                            <th>Assigned To</th>
+
+                            <th>Submitted On</th>
+
+                            <th>Reviewed On</th>
+
+                            <th>Action</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody
+                        id="mySubmissionTableBody">
+
+                        <tr>
+
+                            <td colspan="8">
+
+                                No submissions found.
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
