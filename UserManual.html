@@ -1,0 +1,31 @@
+<div class="page-container user-manual-page">
+  <header class="page-header user-manual-header">
+    <div>
+      <p id="userManualEyebrow" class="page-eyebrow">ROLE-BASED HELP CENTRE</p>
+      <h1 id="userManualTitle">User Manual</h1>
+      <p id="userManualIntro">Step-by-step guidance matched to your login, role, and permitted application scope.</p>
+    </div>
+    <button id="btnPrintUserManual" type="button" class="secondary-btn">
+      <span class="material-symbols-outlined" aria-hidden="true">print</span>
+      <span id="userManualPrintLabel">Print / Save PDF</span>
+    </button>
+  </header>
+
+  <section class="user-manual-role-card">
+    <div class="user-manual-role-icon"><span id="userManualRoleIcon" class="material-symbols-outlined" aria-hidden="true">menu_book</span></div>
+    <div><span id="userManualForLabel">Manual for</span><h2 id="userManualRoleName">Your role</h2><p id="userManualScopeText"></p></div>
+    <div class="user-manual-rule"><strong id="userManualGoldenLabel">Golden rule</strong><span id="userManualGoldenText">Wait for a success message before closing, refreshing, or repeating any submission.</span></div>
+  </section>
+
+  <div class="user-manual-toolbar">
+    <label for="userManualSearch"><span class="material-symbols-outlined" aria-hidden="true">search</span><input id="userManualSearch" type="search" placeholder="Search this manual, for example attendance or upload"></label>
+    <nav id="userManualQuickLinks" aria-label="Manual sections"></nav>
+  </div>
+
+  <section id="userManualSections" class="user-manual-sections" aria-live="polite"></section>
+
+  <aside class="user-manual-support-card">
+    <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>
+    <div><h2 id="userManualSupportTitle">When reporting a problem</h2><p id="userManualSupportText">Send your username, role, location, date and time, affected Order/Submission/Banking Batch ID, the exact error, network colour, and one screenshot. Never share your password or access code.</p></div>
+  </aside>
+</div>
