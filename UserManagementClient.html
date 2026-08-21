@@ -1,0 +1,273 @@
+<script>
+(function () {
+  'use strict';
+
+  var state = { loaded: false, loading: false, bound: false, context: null, users: [] };
+  var availabilityTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function value(id) { var el = $(id); return el ? String(el.value || '').trim() : ''; }
+  function norm(value) { return String(value || '').trim().toUpperCase(); }
+  function roleKey(value) {
+    var r = norm(value).replace(/[^A-Z]/g, '');
+    if (r === 'SUPERADMIN') return 'SUPER_ADMIN';
+    if (r === 'HUBMANAGER' || r === 'MANAGER') return 'HUB_MANAGER';
+    if (r === 'CALLINGAGENT') return 'CALLING_AGENT';
+    if (r === 'ADMIN') return 'ADMIN';
+    return 'RIDER';
+  }
+  function esc(value) {
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+  function unique(values) {
+    var seen = {}, result = [];
+    values.forEach(function (item) {
+      var v = String(item || '').trim(), id = norm(v);
+      if (v && !seen[id]) { seen[id] = true; result.push(v); }
+    });
+    return result;
+  }
+  function responseData(response) { return response && response.data ? response.data : response; }
+  function pageVisible() {
+    var page = $('userManagementView');
+    return page && !page.classList.contains('hidden');
+  }
+  function toast(message, type) {
+    if (typeof window.showToast === 'function') window.showToast(message, type || 'info');
+    else if (message) window.alert(message);
+  }
+  function loader(title, message) { if (typeof window.showLoader === 'function') window.showLoader(title, message); }
+  function hideLoader() { if (typeof window.hideLoader === 'function') window.hideLoader(); }
+  function call(name) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    if (typeof window.server !== 'function') return Promise.reject(new Error('Application server connection is unavailable.'));
+    return window.server.apply(null, [name].concat(args));
+  }
+  function selectOptions(id, items, placeholder, selected) {
+    var select = $(id);
+    if (!select) return;
+    select.replaceChildren();
+    select.add(new Option(placeholder, ''));
+    unique(items || []).forEach(function (item) { select.add(new Option(item, item)); });
+    if (selected && Array.prototype.some.call(select.options, function (o) { return norm(o.value) === norm(selected); })) select.value = selected;
+  }
+  function showUserManagementMenu() {
+    var item = $('menuUserManagement');
+    var appUser = window.APP && APP.user ? APP.user : {};
+    var role = roleKey(appUser.role);
+    if (item && ['SUPER_ADMIN', 'ADMIN', 'HUB_MANAGER'].indexOf(role) !== -1) item.hidden = false;
+  }
+  function rows() {
+    var c = state.context || {};
+    return Array.isArray(c.locations) ? c.locations : [];
+  }
+  function refreshLocations(zoneValue, warehouseValue, hubValue) {
+    var locations = rows();
+    var zones = unique(locations.map(function (r) { return r.zone; }));
+    var zone = zoneValue || value('managedZone');
+    selectOptions('managedZone', zones, 'Select zone', zone);
+    zone = value('managedZone');
+    var zoneRows = locations.filter(function (r) { return norm(r.zone) === norm(zone); });
+    var warehouses = unique(zoneRows.map(function (r) { return r.warehouse; }));
+    var warehouse = warehouseValue || value('managedWarehouse');
+    selectOptions('managedWarehouse', warehouses, 'Select warehouse', warehouse);
+    warehouse = value('managedWarehouse');
+    var hubRows = zoneRows.filter(function (r) { return norm(r.warehouse) === norm(warehouse); });
+    selectOptions('managedHub', unique(hubRows.map(function (r) { return r.lmHub; })), 'Select LM Hub', hubValue || value('managedHub'));
+  }
+  function allowedScopes(role) {
+    var actor = (state.context || {}).actor || {};
+    var actorRole = roleKey(actor.role), actorScope = norm(actor.access);
+    var target = roleKey(role);
+    if (target === 'RIDER') return [];
+    if (target === 'CALLING_AGENT') return ['CSR'];
+    if (target === 'HUB_MANAGER') return ['LM Hub'];
+    if (target === 'SUPER_ADMIN') return actorRole === 'SUPER_ADMIN' && actorScope === 'PAN INDIA' ? ['Pan India', 'CSR'] : ['CSR'];
+    if (target === 'ADMIN') {
+      if (actorRole === 'SUPER_ADMIN' && actorScope === 'PAN INDIA') return ['Zone', 'Warehouse', 'CSR'];
+      if (actorRole === 'SUPER_ADMIN' && actorScope === 'CSR') return ['CSR'];
+      if (actorRole === 'ADMIN' && actorScope === 'ZONE') return ['Zone', 'Warehouse'];
+      if (actorRole === 'ADMIN' && actorScope === 'WAREHOUSE') return ['Warehouse'];
+    }
+    return [];
+  }
+  function configureAccess(preferred) {
+    var role = value('managedRole'), roleId = roleKey(role), select = $('managedAccess');
+    var label = $('managedAccessLabel'), help = $('managedAccessHelp');
+    var scopes = allowedScopes(role);
+    selectOptions('managedAccess', scopes, 'Select access scope', preferred || value('managedAccess'));
+    select.disabled = false;
+    select.required = roleId !== 'RIDER' && roleId !== 'CALLING_AGENT';
+    label.innerHTML = 'Access Scope' + (select.required ? ' <span class="required">*</span>' : '');
+    if (roleId === 'RIDER') {
+      selectOptions('managedAccess', [], 'No scope required', ''); select.disabled = true; help.textContent = 'No access scope is required for Rider.';
+    } else if (roleId === 'CALLING_AGENT') {
+      selectOptions('managedAccess', ['CSR'], 'CSR', 'CSR'); select.disabled = true; help.textContent = 'Automatically set to CSR for Calling Agent.';
+    } else {
+      help.textContent = scopes.length ? 'Select the permitted scope for this role.' : 'Select a role to choose its access scope.';
+    }
+  }
+  function renderUsers() {
+    var body = $('managedUserRows');
+    if (!body) return;
+    var query = norm(value('managedUserSearch'));
+    var users = state.users.filter(function (u) {
+      return !query || norm(u.username).indexOf(query) !== -1 || norm(u.employeeId).indexOf(query) !== -1;
+    });
+    if (!users.length) {
+      body.innerHTML = '<tr><td colspan="10" class="um-empty">No users are available in your scope.</td></tr>';
+      return;
+    }
+    body.innerHTML = users.map(function (u) {
+      var index = state.users.indexOf(u);
+      return '<tr><td><strong>' + esc(u.username) + '</strong></td><td>' + esc(u.riderName) + '</td><td>' + esc(u.employeeId) + '</td><td>' + esc(u.role) + '</td><td>' + esc(u.access) + '</td><td>' + esc(u.zone) + '</td><td>' + esc(u.warehouse) + '</td><td>' + esc(u.lmHub) + '</td><td><span class="um-pill">' + esc(u.status) + '</span></td><td><button type="button" class="secondary-btn managed-edit" data-index="' + index + '">Edit</button></td></tr>';
+    }).join('');
+    Array.prototype.forEach.call(body.querySelectorAll('.managed-edit'), function (button) {
+      button.addEventListener('click', function () { editUser(state.users[Number(button.dataset.index)]); });
+    });
+  }
+  function setAvailability() {
+    var context = state.context || {}, original = norm(value('managedOriginalUsername'));
+    var username = value('managedUsername'), employeeId = value('managedEmployeeId');
+    var usernameTaken = (context.takenUsernames || []).some(function (u) { return norm(u) === norm(username) && norm(u) !== original; });
+    /* While editing, the current user's own Employee ID is valid.  The
+       previous index-based comparison used a list that was not returned to
+       the browser, so every existing Employee ID was incorrectly flagged. */
+    var employeeTaken = state.users.some(function (user) {
+      return norm(user.employeeId) === norm(employeeId) && norm(user.username) !== original;
+    });
+    var uNote = $('managedUsernameAvailability'), eNote = $('managedEmployeeIdAvailability');
+    if (uNote) {
+      uNote.className = 'um-status ' + (!username ? '' : usernameTaken ? 'unavailable' : 'available');
+      uNote.textContent = !username ? '' : usernameTaken ? 'Username is already in use.' : 'Username is available.';
+    }
+    if (eNote) {
+      eNote.className = 'um-status ' + (!employeeId ? '' : employeeTaken ? 'unavailable' : 'available');
+      eNote.textContent = !employeeId ? '' : employeeTaken ? 'Employee ID is already in use.' : 'Employee ID is available.';
+    }
+    return !usernameTaken && !employeeTaken;
+  }
+  function checkAvailabilitySoon() {
+    clearTimeout(availabilityTimer);
+    availabilityTimer = setTimeout(setAvailability, 180);
+  }
+  function resetForm() {
+    var form = $('managedUserForm');
+    if (form) form.reset();
+    $('managedOriginalUsername').value = '';
+    $('managedUsername').disabled = false;
+    $('managedFormTitle').textContent = 'Create User';
+    $('managedSubmit').textContent = 'Create User';
+    $('managedPassword').required = true;
+    $('managedPasswordLabel').innerHTML = 'Initial Access Code <span class="required">*</span>';
+    selectOptions('managedRole', (state.context || {}).roles || [], 'Select role', '');
+    selectOptions('managedVendor', (state.context || {}).vendors || [], 'Select vendor', '');
+    configureAccess('');
+    refreshLocations('', '', '');
+    setAvailability();
+  }
+  function editUser(user) {
+    if (!user) return;
+    $('managedOriginalUsername').value = user.username;
+    $('managedUsername').value = user.username;
+    $('managedUsername').disabled = true;
+    $('managedName').value = user.riderName || '';
+    $('managedEmployeeId').value = user.employeeId || '';
+    selectOptions('managedRole', (state.context || {}).roles || [], 'Select role', user.role);
+    configureAccess(user.access);
+    $('managedStatus').value = user.status || 'Active';
+    refreshLocations(user.zone, user.warehouse, user.lmHub);
+    $('managedEmail').value = user.email || '';
+    if ($('managedVendor')) $('managedVendor').value = user.vendorName || '';
+    $('managedPhoto').value = '';
+    $('managedPassword').value = '';
+    $('managedPassword').required = false;
+    $('managedPasswordLabel').textContent = 'New access code (leave blank to keep current)';
+    $('managedFormTitle').textContent = 'Edit User';
+    $('managedSubmit').textContent = 'Save Changes';
+    setAvailability();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function photoPayload(file) {
+    if (!file) return Promise.resolve(null);
+    return new Promise(function (resolve, reject) {
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type || '')) return reject(new Error('Upload a JPG, PNG or WEBP photo.'));
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('The photo could not be read.')); };
+      reader.onload = function () {
+        var image = new Image();
+        image.onerror = function () { reject(new Error('The photo could not be processed.')); };
+        image.onload = function () {
+          var max = 800, ratio = Math.min(1, max / Math.max(image.width, image.height));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(image.width * ratio)); canvas.height = Math.max(1, Math.round(image.height * ratio));
+          canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.78) });
+        };
+        image.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function formPayload(photo) {
+    return {
+      username: value('managedUsername') || value('managedOriginalUsername'),
+      riderName: value('managedName'), employeeId: value('managedEmployeeId'), role: value('managedRole'),
+      access: value('managedAccess'), status: value('managedStatus'), zone: value('managedZone'),
+      warehouse: value('managedWarehouse'), lmHub: value('managedHub'), email: value('managedEmail'), vendorName: value('managedVendor'),
+      password: value('managedPassword'), photo: photo
+    };
+  }
+  function submit(event) {
+    event.preventDefault(); event.stopImmediatePropagation();
+    var form = $('managedUserForm');
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    if (!setAvailability()) { toast('Use a unique username and employee ID.', 'error'); return; }
+    var original = value('managedOriginalUsername');
+    var file = $('managedPhoto').files[0];
+    loader(original ? 'Wait updating user...' : 'Wait creating user...', 'Please wait...');
+    photoPayload(file).then(function (photo) {
+      return original ? call('updateManagedUser', original, formPayload(photo)) : call('createManagedUser', formPayload(photo));
+    }).then(function (response) {
+      if (!response || response.success === false) throw new Error((response && response.message) || 'Unable to save the user.');
+      toast(response.message || 'User saved successfully.', 'success');
+      resetForm();
+      state.loaded = false;
+      return loadContext();
+    }).catch(function (error) { toast(error.message || 'Unable to save the user.', 'error'); }).finally(hideLoader);
+  }
+  function bind() {
+    if (state.bound) return;
+    state.bound = true;
+    $('managedUserForm').addEventListener('submit', submit, true);
+    $('managedCancel').addEventListener('click', function (event) { event.preventDefault(); event.stopImmediatePropagation(); resetForm(); }, true);
+    $('managedRole').addEventListener('change', function () { configureAccess(''); var rider = roleKey(value('managedRole')) === 'RIDER'; $('managedVendor').required = rider; });
+    $('managedZone').addEventListener('change', function () { refreshLocations(value('managedZone'), '', ''); });
+    $('managedWarehouse').addEventListener('change', function () { refreshLocations(value('managedZone'), value('managedWarehouse'), ''); });
+    $('managedUsername').addEventListener('input', checkAvailabilitySoon);
+    $('managedEmployeeId').addEventListener('input', checkAvailabilitySoon);
+    $('managedUserSearch').addEventListener('input', renderUsers);
+  }
+  function loadContext() {
+    if (state.loading) return Promise.resolve();
+    state.loading = true;
+    return call('userManagementContext').then(function (response) {
+      if (!response || response.success === false) throw new Error((response && response.message) || 'Unable to load User Management.');
+      state.context = responseData(response) || {};
+      state.users = state.context.users || [];
+      state.context.allUsers = (state.context.allUsers || state.context.users || []);
+      bind(); resetForm(); renderUsers(); state.loaded = true; showUserManagementMenu();
+    }).catch(function (error) { if (pageVisible()) toast(error.message || 'Unable to load User Management.', 'error'); }).finally(function () { state.loading = false; });
+  }
+  window.loadUserManagement = loadContext;
+  window.resetManagedUserForm = resetForm;
+  function start() {
+    bind(); showUserManagementMenu();
+    if (pageVisible()) loadContext();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+</script>
