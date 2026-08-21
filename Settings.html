@@ -1,0 +1,350 @@
+<!-- ============================================================
+     SETTINGS
+============================================================= -->
+
+<div id="settingsContainer" class="page-container">
+
+    <!-- ===================================================== -->
+    <!-- Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                Settings
+
+            </h1>
+
+            <p>
+
+                Manage your account settings.
+
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- User Information -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            Profile Information
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label>
+
+                        Username
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingUsername"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Rider Name
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingRiderName"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Employee ID
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingEmployeeId"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Role
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingRole"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Zone
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingZone"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Warehouse
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingWarehouse"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        LM Hub
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingHub"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Status
+
+                    </label>
+
+                    <input
+                        type="text"
+                        id="settingStatus"
+                        class="form-control"
+                        readonly>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Appearance -->
+    <!-- ===================================================== -->
+
+    <div id="appearanceSettingsCard" class="card hidden">
+
+        <div class="card-header">Appearance</div>
+
+        <div class="card-body">
+
+            <div class="preference-row">
+
+                <div>
+                    <h3 class="preference-title">
+                        <span class="material-symbols-outlined" aria-hidden="true">dark_mode</span>
+                        Dark mode
+                    </h3>
+                    <p>Use a lower-light display on this device only.</p>
+                </div>
+
+                <label class="switch" for="toggleDarkMode">
+                    <input id="toggleDarkMode" type="checkbox">
+                    <span class="slider"></span>
+                </label>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Language -->
+    <!-- ===================================================== -->
+
+    <div id="languageSettingsCard" class="card hidden">
+
+        <div class="card-header">Language</div>
+
+        <div class="card-body">
+
+            <div class="preference-row language-preference-row">
+
+                <div>
+                    <h3 class="preference-title">
+                        <span class="material-symbols-outlined" aria-hidden="true">translate</span>
+                        Display language
+                    </h3>
+                    <p>Changes only labels, buttons, headings and messages on this device. Records remain in English.</p>
+                </div>
+
+                <select id="ddlUiLanguage" class="form-control language-preference-select" aria-label="Display language">
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी (Hindi)</option>
+                    <option value="bn">বাংলা (Bengali)</option>
+                    <option value="gu">ગુજરાતી (Gujarati)</option>
+                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                    <option value="ml">മലയാളം (Malayalam)</option>
+                    <option value="mr">मराठी (Marathi)</option>
+                    <option value="or">ଓଡ଼ିଆ (Odia)</option>
+                    <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+                    <option value="ta">தமிழ் (Tamil)</option>
+                    <option value="te">తెలుగు (Telugu)</option>
+                    <option value="ur">اردو (Urdu)</option>
+                </select>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Change Password -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            Change Password
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+
+                    <label>
+
+                        Current Password
+
+                    </label>
+
+                    <input
+                        type="password"
+                        id="currentPassword"
+                        class="form-control">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        New Password
+
+                    </label>
+
+                    <input
+                        type="password"
+                        id="newPassword"
+                        class="form-control">
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>
+
+                        Confirm Password
+
+                    </label>
+
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        class="form-control">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Actions -->
+    <!-- ===================================================== -->
+
+    <div class="button-row">
+
+        <button
+            id="btnChangePassword"
+            class="primary-btn">
+
+            Change Password
+
+        </button>
+
+        <button
+            id="btnLogoutSettings"
+            class="secondary-btn">
+
+            Logout
+
+        </button>
+
+    </div>
+
+</div>
+
