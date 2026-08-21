@@ -1,0 +1,415 @@
+<!-- ============================================================
+     REVIEW REQUEST
+============================================================= -->
+
+<div id="reviewRequestContainer" class="page-container">
+
+    <!-- ===================================================== -->
+    <!-- Header -->
+    <!-- ===================================================== -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1>
+
+                Review Request
+
+            </h1>
+
+            <p>
+
+                Review the selected rider submission.
+
+            </p>
+
+        </div>
+
+        <div>
+
+            <button
+                id="btnBackPending"
+                class="secondary-btn">
+
+                Back
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+    <!-- Submission Details -->
+    <!-- ===================================================== -->
+
+    <div class="card">
+
+        <div class="card-header">
+
+            Submission Details
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="details-grid">
+
+                <div>
+
+                    <label>Submission ID</label>
+
+                    <p id="reviewSubmissionId">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Order Number</label>
+
+                    <p id="reviewOrderNumber">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Rider Name</label>
+
+                    <p id="reviewRiderName">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Employee ID</label>
+
+                    <p id="reviewEmployeeId">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Zone</label>
+
+                    <p id="reviewZone">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Warehouse</label>
+
+                    <p id="reviewWarehouse">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>LM Hub</label>
+
+                    <p id="reviewLMHub">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Reason</label>
+
+                    <p id="reviewReason">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Status</label>
+
+                    <p id="reviewStatus">-</p>
+
+                </div>
+
+                <div>
+
+                    <label>Submitted On</label>
+
+                    <p id="reviewSubmittedOn">-</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================================== -->
+<!-- Uploaded Proofs -->
+<!-- ===================================================== -->
+
+<div class="card">
+
+    <div class="card-header">
+
+        Uploaded Proofs
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="form-group">
+
+            <label>
+
+                Mandatory Proof
+
+            </label>
+
+            <div>
+
+                <a
+                    id="reviewMandatoryProof"
+                    href="#"
+                    target="_blank"
+                    class="primary-btn">
+
+                    👁 View Mandatory Proof
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <br>
+
+        <div class="form-group">
+
+            <label>
+
+                Optional Proof
+
+            </label>
+
+            <div>
+
+                <a
+                    id="reviewOptionalProof"
+                    href="#"
+                    target="_blank"
+                    class="secondary-btn">
+
+                    👁 View Optional Proof
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- Review Section -->
+<!-- ===================================================== -->
+
+<div class="card">
+
+    <div class="card-header">
+
+        Review History
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="details-grid">
+
+            <div>
+
+                <label>
+
+                    Latest Status
+
+                </label>
+
+                <p id="reviewLatestStatus">-</p>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Assigned To
+
+                </label>
+
+                <p id="reviewAssignedTo">-</p>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Reviewed By
+
+                </label>
+
+                <p id="reviewReviewedBy">-</p>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Reviewed On
+
+                </label>
+
+                <p id="reviewReviewedOn">-</p>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Last Updated
+
+                </label>
+
+                <p id="reviewLastUpdated">-</p>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Review Time
+
+                </label>
+
+                <p id="reviewTime">-</p>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- ===================================================== -->
+<!-- Quick Actions -->
+<!-- ===================================================== -->
+
+<div id="reviewQuickActions" class="card managerOnly hidden">
+
+    <div class="card-header">
+
+        Quick Actions
+
+    </div>
+
+    <div class="card-body">
+
+        <p class="text-light mb-20">
+
+            These actions approve the submission and save the selected remark.
+
+        </p>
+
+        <div class="button-row">
+
+            <button
+                id="btnInitiateRto"
+                type="button"
+                class="secondary-btn">
+
+                Initiate RTO
+
+            </button>
+
+            <button
+                id="btnPushNdrCalling"
+                type="button"
+                class="primary-btn">
+
+                Push For NDR Calling
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ===================================================== -->
+<!-- Review Action -->
+<!-- ===================================================== -->
+
+<div id="managerReviewSection" class="card managerOnly">
+
+    <div class="card-header">
+
+        Review Action
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="form-group">
+
+            <label>Manager Remarks</label>
+
+            <textarea
+                id="txtManagerRemarks"
+                class="form-control"
+                rows="4"
+                placeholder="Enter review remarks..."></textarea>
+
+        </div>
+
+        <br>
+
+        <div class="button-row">
+
+            <button
+                id="btnApproveSubmission"
+                class="primary-btn">
+
+                Approve
+
+            </button>
+
+            <button
+                id="btnRejectSubmission"
+                class="danger-btn">
+
+                Reject
+
+            </button>
+
+            <button
+                id="btnCancelReview"
+                class="secondary-btn">
+
+                Cancel
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+</div>
+
