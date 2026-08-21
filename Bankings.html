@@ -1,0 +1,186 @@
+<div class="page-container banking-page">
+  <header class="page-header banking-page-header">
+    <div>
+      <p class="page-eyebrow">CASH COLLECTION</p>
+      <h1>Banking</h1>
+      <p>Upload validated deposit data and retrieve earlier banking batches within your permitted location scope.</p>
+    </div>
+    <div class="banking-scope-chip" id="bankingScopeChip">Loading permitted scope…</div>
+  </header>
+
+  <div class="banking-tabbar" role="tablist" aria-label="Banking workspace">
+    <button id="bankingUploadTab" class="banking-tab active" type="button" role="tab" aria-selected="true" data-banking-tab="upload">
+      <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+      Upload Banking
+    </button>
+    <button id="bankingRepositoryTab" class="banking-tab" type="button" role="tab" aria-selected="false" data-banking-tab="repository">
+      <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
+      Banking Repository
+    </button>
+  </div>
+
+  <section id="bankingUploadPanel" class="banking-panel" role="tabpanel" aria-labelledby="bankingUploadTab">
+    <div id="bankingMailAuthPanel" class="banking-mail-auth hidden" role="alert">
+      <span class="material-symbols-outlined" aria-hidden="true">mark_email_unread</span>
+      <div>
+        <strong>Email service needs one-time authorization</strong>
+        <p id="bankingMailAuthMessage">The Apps Script deployment owner must approve the Google Mail permission once. Operational users will not be asked for permission.</p>
+      </div>
+      <button id="btnAuthorizeBankingMail" type="button" class="primary-btn">Authorize email service</button>
+      <button id="btnRetryBankingMail" type="button" class="secondary-btn hidden">Check permission &amp; retry email</button>
+    </div>
+    <div class="banking-workflow-strip" aria-label="Banking upload steps">
+      <div><b>1</b><span>Select banking date and permitted LM Hub</span></div>
+      <div><b>2</b><span>Choose the approved data file</span></div>
+      <div><b>3</b><span>Preview and attach the mandatory slip</span></div>
+      <div><b>4</b><span>Submit once and wait for confirmation</span></div>
+    </div>
+
+    <article class="card banking-card">
+      <div class="card-header banking-card-heading">
+        <div>
+          <span class="banking-step-number">1</span>
+          <div><h2>Banking date and location</h2><p>The date must be yesterday or earlier. Location choices come from your access mapping.</p></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="banking-location-grid">
+          <div class="form-group">
+            <label for="bankingBusinessDate">Banking date <span class="required">*</span></label>
+            <input id="bankingBusinessDate" class="form-control" type="date" required>
+            <small class="form-hint">The business date represented by this banking file.</small>
+          </div>
+          <div class="form-group">
+            <label for="bankingZone">Zone <span class="required">*</span></label>
+            <select id="bankingZone" class="form-control" required><option value="">Select Zone</option></select>
+          </div>
+          <div class="form-group">
+            <label for="bankingWarehouse">Warehouse <span class="required">*</span></label>
+            <select id="bankingWarehouse" class="form-control" required><option value="">Select Warehouse</option></select>
+          </div>
+          <div class="form-group">
+            <label for="bankingHub">LM Hub <span class="required">*</span></label>
+            <select id="bankingHub" class="form-control" required><option value="">Select LM Hub</option></select>
+          </div>
+        </div>
+        <div id="bankingEmailNotice" class="banking-email-notice" role="status"></div>
+      </div>
+    </article>
+
+    <article class="card banking-card">
+      <div class="card-header banking-card-heading">
+        <div>
+          <span class="banking-step-number">2</span>
+          <div><h2>Data file</h2><p>Use the exact 21-column format. Up to <strong id="bankingMaxRows">1,000</strong> line items are accepted per upload.</p></div>
+        </div>
+        <button id="btnDownloadBankingTemplate" type="button" class="secondary-btn">
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>
+          Download Template
+        </button>
+      </div>
+      <div class="card-body">
+        <label class="banking-file-drop" for="bankingDataFile">
+          <span class="material-symbols-outlined" aria-hidden="true">table_view</span>
+          <strong>Choose banking data file</strong>
+          <span>Excel (.xlsx/.xls), OpenDocument (.ods), or CSV. WPS users should save as .xlsx.</span>
+          <input id="bankingDataFile" type="file" accept=".xlsx,.xls,.ods,.csv" required>
+        </label>
+        <div id="bankingFileSummary" class="banking-file-summary hidden" role="status"></div>
+        <div id="bankingDataPreview" class="banking-preview hidden">
+          <div class="banking-preview-heading"><h3>Data preview</h3><span id="bankingPreviewCount"></span></div>
+          <div class="table-responsive"><table class="table banking-preview-table"><thead id="bankingPreviewHead"></thead><tbody id="bankingPreviewBody"></tbody></table></div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card banking-card">
+      <div class="card-header banking-card-heading">
+        <div>
+          <span class="banking-step-number">3</span>
+          <div><h2>Mandatory banking slip</h2><p>Preview the slip before submission. Images are compressed for faster mobile upload; PDFs must be 10 MB or smaller.</p></div>
+        </div>
+      </div>
+      <div class="card-body banking-slip-layout">
+        <label class="banking-file-drop banking-slip-drop" for="bankingSlipFile">
+          <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+          <strong>Choose banking slip <span class="required">*</span></strong>
+          <span>JPG, PNG, WebP, HEIC, or PDF</span>
+          <input id="bankingSlipFile" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" required>
+        </label>
+        <div id="bankingSlipPreview" class="banking-slip-preview hidden" aria-label="Banking slip preview">
+          <img id="bankingSlipImage" class="hidden" alt="Selected banking slip preview">
+          <object id="bankingSlipPdf" class="hidden" type="application/pdf" aria-label="Selected banking slip PDF preview"></object>
+          <div><strong id="bankingSlipName"></strong><span id="bankingSlipSize"></span></div>
+        </div>
+      </div>
+    </article>
+
+    <div class="banking-submit-bar">
+      <div><strong>Ready to upload?</strong><span>Do not close the app until the success message and batch ID appear.</span></div>
+      <button id="btnSubmitBanking" type="button" class="primary-btn">
+        <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span>
+        Upload Banking
+      </button>
+    </div>
+    <div id="bankingUploadResult" class="banking-upload-result hidden" role="status"></div>
+  </section>
+
+  <section id="bankingRepositoryPanel" class="banking-panel hidden" role="tabpanel" aria-labelledby="bankingRepositoryTab">
+    <article class="card banking-card">
+      <div class="card-header banking-card-heading">
+        <div><h2>Search banking repository</h2><p>Results are always restricted to your role and mapped locations.</p></div>
+      </div>
+      <div class="card-body">
+        <div class="banking-filter-grid">
+          <div class="form-group"><label for="bankingRepoStart">From date</label><input id="bankingRepoStart" class="form-control" type="date"></div>
+          <div class="form-group"><label for="bankingRepoEnd">To date</label><input id="bankingRepoEnd" class="form-control" type="date"></div>
+          <div class="form-group">
+            <span class="form-label">Zone</span>
+            <details id="bankingRepoZone" class="banking-multi-select">
+              <summary><span data-banking-multi-summary>All permitted Zones</span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary>
+              <div class="banking-multi-menu"><label class="banking-multi-all"><input type="checkbox" data-banking-select-all> Select all</label><div data-banking-options></div></div>
+            </details>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Warehouse</span>
+            <details id="bankingRepoWarehouse" class="banking-multi-select">
+              <summary><span data-banking-multi-summary>All permitted Warehouses</span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary>
+              <div class="banking-multi-menu"><label class="banking-multi-all"><input type="checkbox" data-banking-select-all> Select all</label><div data-banking-options></div></div>
+            </details>
+          </div>
+          <div class="form-group">
+            <span class="form-label">LM Hub</span>
+            <details id="bankingRepoHub" class="banking-multi-select">
+              <summary><span data-banking-multi-summary>All permitted LM Hubs</span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary>
+              <div class="banking-multi-menu"><label class="banking-multi-all"><input type="checkbox" data-banking-select-all> Select all</label><div data-banking-options></div></div>
+            </details>
+          </div>
+        </div>
+        <div class="banking-filter-actions">
+          <button id="btnSearchBankingRepository" type="button" class="primary-btn">Search Repository</button>
+          <button id="btnDownloadBankingBulk" type="button" class="secondary-btn banking-download-bulk" disabled>
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>
+            Download all results
+          </button>
+          <button id="btnResetBankingRepository" type="button" class="secondary-btn">Reset</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="card banking-card banking-repository-card">
+      <div class="card-header banking-card-heading">
+        <div><h2>Uploaded batches</h2><p id="bankingRepositorySummary">Choose filters and search.</p></div>
+        <button id="btnDownloadBankingBulkResults" type="button" class="primary-btn banking-download-bulk" disabled>
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>
+          Download all search results
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table banking-repository-table">
+          <thead><tr><th>Banking Date</th><th>Zone</th><th>Warehouse</th><th>LM Hub</th><th>Lines</th><th>Uploaded By</th><th>Uploaded At</th><th>Slip</th><th>File</th><th>Email</th></tr></thead>
+          <tbody id="bankingRepositoryRows"><tr><td colspan="10" class="banking-empty">No banking search has been run.</td></tr></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+</div>
