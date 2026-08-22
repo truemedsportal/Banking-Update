@@ -15,7 +15,7 @@
   <title><?= appName ?></title>
   <?!= include("CSS"); ?>
   <style>:root { --primary: <?= themeColor ?>; }</style>
-  <script>window.APP_BOOT_CONFIG = <?!= bootConfig ?>;window.FRONTEND_BUILD_VERSION="2.4.3";</script>
+  <script>window.APP_BOOT_CONFIG = <?!= bootConfig ?>;window.FRONTEND_BUILD_VERSION="2.5.2";</script>
 </head>
 <body>
   <div id="loaderOverlay" class="loader-overlay hidden">
@@ -47,7 +47,7 @@
       <main id="mainContent" class="main-content">
         <section id="dashboardView" class="page hidden"><?!= include("RiderDashboard"); ?></section>
         <section id="submissionView" class="page hidden"><?!= include("RiderSubmission"); ?></section>
-        <section id="mySubmissionView" class="page hidden"><?!= include("MySubmission"); ?></section>
+        <section id="mySubmissionView" class="page hidden"><?!= include("Mysubmission"); ?></section>
         <section id="pendingView" class="page hidden"><?!= include("PendingRequests"); ?></section>
         <section id="reviewView" class="page hidden"><?!= include("ReviewRequest"); ?></section>
         <section id="adminView" class="page hidden"><?!= include("AdminDashboard"); ?></section>
@@ -59,7 +59,7 @@
         <section id="csrReviewView" class="page hidden"><?!= include("CsrReview"); ?></section>
         <section id="csrRepositoryView" class="page hidden"><?!= include("CsrRepository"); ?></section>
         <section id="userManagementView" class="page hidden"><?!= include("UserManagements"); ?></section>
-    <section id="bankingView" class="page hidden"><?!= include("Bankings"); ?></section>
+        <section id="bankingView" class="page hidden"><?!= include("Bankings"); ?></section>
         <section id="userManualView" class="page hidden"><?!= include("UserManual"); ?></section>
         <section id="attendanceView" class="page hidden"><?!= include("Attendances"); ?></section>
         <section id="regularizationView" class="page hidden"><?!= include("Regularization"); ?></section>
@@ -68,7 +68,7 @@
     </div>
   </div>
   <div id="dialogContainer"></div>
-  <?!= include("JavaScript"); ?>
+  <?!= include("Javascript"); ?>
   <?!= include("UserManagementClient"); ?>
 </body>
 </html>
