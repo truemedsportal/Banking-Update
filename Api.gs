@@ -352,6 +352,9 @@ const API = (() => {
       case "bankingUploadSlip":
         return Banking.uploadSlip(user, args[0] || {});
 
+      case "bankingPreflight":
+        return Banking.preflight(user, args[0] || {});
+
       case "bankingSubmit":
         return Banking.submit(user, args[0] || {});
 
