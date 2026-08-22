@@ -8,6 +8,7 @@ const Banking = (() => {
   const SPREADSHEET_ID = "1UaSLtGLlC1qnCB1wmMWnygQLkeSqGGaE79ZtWuT4XVk";
   const SLIP_ROOT_FOLDER_ID = "1gITut4H5S6Ul2MWmKM69PPV72pLa2-AL";
   const MAIL_SHEET_NAME = "Mail ID";
+  const AUDIT_SHEET_NAME = "Banking Audit Log";
   const MAX_ROWS = 1000;
   const MAX_BULK_EXPORT_ROWS = 10000;
   const MAX_SLIP_BYTES = 10 * 1024 * 1024;
@@ -53,6 +54,19 @@ const Banking = (() => {
 
   const STORAGE_HEADERS = Object.freeze([
     "Upload Batch ID",
+    "Banking Date",
+    "Zone",
+    "Warehouse",
+    "LM Hub"
+  ].concat(TEMPLATE_HEADERS).concat([
+    "Banking Slip",
+    "Uploaded By",
+    "Uploaded Email",
+    "Uploaded At"
+  ]));
+
+  const LEGACY_STORAGE_HEADERS = Object.freeze([
+    "Upload Batch ID",
     "Client Request ID",
     "Banking Date",
     "Zone",
@@ -65,9 +79,16 @@ const Banking = (() => {
     "Uploaded At"
   ]));
 
-  const BULK_EXPORT_HEADERS = Object.freeze(
-    STORAGE_HEADERS.filter(header => header !== "Client Request ID")
-  );
+  const BULK_EXPORT_HEADERS = Object.freeze(STORAGE_HEADERS.slice());
+
+  const AUDIT_HEADERS = Object.freeze([
+    "Audit ID", "Timestamp", "Outcome", "Action", "AWB",
+    "Previous Batch ID", "New Batch ID", "Actor Username", "Actor Name",
+    "Actor Email", "Actor Role", "Actor Access Scope", "Selected Zone",
+    "Selected Warehouse", "Selected LM Hub", "Source Sheet", "Source Row",
+    "Destination Sheet", "Destination Row", "Previous Record JSON",
+    "Replacement Record JSON"
+  ]);
 
   function text(value) {
     return value === null || value === undefined ? "" : String(value).trim();
@@ -217,6 +238,8 @@ const Banking = (() => {
 
     const dateIndexes = DATE_HEADERS.map(header => TEMPLATE_HEADERS.indexOf(header));
     const errors = [];
+    const awbIndex = TEMPLATE_HEADERS.indexOf("AWB");
+    const seenAwbs = {};
     const prepared = rows.map((source, rowIndex) => {
       const row = Array.isArray(source) ? source.slice(0, TEMPLATE_HEADERS.length) : [];
       while (row.length < TEMPLATE_HEADERS.length) row.push("");
@@ -224,6 +247,18 @@ const Banking = (() => {
       if (!row.some(value => text(value))) {
         errors.push("Row " + (rowIndex + 2) + ": blank rows are not allowed.");
         return row.map(safeCell);
+      }
+
+      const awb = normalizedAwb(row[awbIndex]);
+      if (!awb) {
+        errors.push("Row " + (rowIndex + 2) + ": AWB is required.");
+      } else if (seenAwbs[awb]) {
+        errors.push(
+          "Row " + (rowIndex + 2) + ": AWB '" + text(row[awbIndex]) +
+          "' is duplicated in this file (first used in row " + seenAwbs[awb] + ")."
+        );
+      } else {
+        seenAwbs[awb] = rowIndex + 2;
       }
 
       dateIndexes.forEach(columnIndex => {
@@ -251,6 +286,10 @@ const Banking = (() => {
     }
 
     return prepared;
+  }
+
+  function normalizedAwb(value) {
+    return text(value).toUpperCase().replace(/\s+/g, " ");
   }
 
   function currentLocation(user) {
@@ -504,7 +543,19 @@ const Banking = (() => {
     sheet.setColumnWidth(STORAGE_HEADERS.indexOf("Drop Address") + 1, 360);
     sheet.setColumnWidth(STORAGE_HEADERS.indexOf("UPI Pic") + 1, 260);
     sheet.setColumnWidth(STORAGE_HEADERS.indexOf("Banking Slip") + 1, 220);
-    try { sheet.hideColumns(STORAGE_HEADERS.indexOf("Client Request ID") + 1); } catch (error) {}
+  }
+
+  function storageHeadersForSheet(sheet) {
+    if (!sheet || sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) return null;
+    const width = Math.min(sheet.getLastColumn(), LEGACY_STORAGE_HEADERS.length);
+    const existing = sheet.getRange(1, 1, 1, width).getDisplayValues()[0];
+    if (STORAGE_HEADERS.every((header, index) => same(header, existing[index]))) {
+      return STORAGE_HEADERS.slice();
+    }
+    if (LEGACY_STORAGE_HEADERS.every((header, index) => same(header, existing[index]))) {
+      return LEGACY_STORAGE_HEADERS.slice();
+    }
+    return null;
   }
 
   function monthSheet(spreadsheet, bankingDate) {
@@ -521,19 +572,21 @@ const Banking = (() => {
       return sheet;
     }
 
-    const existing = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), STORAGE_HEADERS.length))
-      .getDisplayValues()[0].slice(0, STORAGE_HEADERS.length);
-    const matches = STORAGE_HEADERS.every((header, index) => same(header, existing[index]));
-    if (!matches)
+    const recognizedHeaders = storageHeadersForSheet(sheet);
+    if (!recognizedHeaders)
       throw new Error("The '" + name + "' banking sheet headers do not match this portal version.");
-    try { sheet.hideColumns(STORAGE_HEADERS.indexOf("Client Request ID") + 1); } catch (error) {}
+    const legacyIdColumn = recognizedHeaders.indexOf("Client Request ID");
+    if (legacyIdColumn >= 0) {
+      try { sheet.hideColumns(legacyIdColumn + 1); } catch (error) {}
+    }
     return sheet;
   }
 
-  function setHyperlinks(sheet, startRow, rows) {
+  function setHyperlinks(sheet, startRow, rows, storageHeaders) {
+    storageHeaders = storageHeaders || STORAGE_HEADERS;
     const linkHeaders = ["UPI Pic", "Banking Slip"];
     linkHeaders.forEach(headerName => {
-      const column = STORAGE_HEADERS.indexOf(headerName);
+      const column = storageHeaders.indexOf(headerName);
       const richRows = rows.map(row => {
         const url = text(row[column]).replace(/^'/, "");
         let builder = SpreadsheetApp.newRichTextValue().setText(url);
@@ -648,6 +701,7 @@ const Banking = (() => {
     let bankingDate;
     let rows;
     let slip;
+    let duplicateMode;
     try {
       location = locationForUser(user, payload.location || {});
       if (!location) throw new Error("Choose a permitted Zone, Warehouse and LM Hub.");
@@ -657,6 +711,9 @@ const Banking = (() => {
       validateHeaders(payload.headers);
       rows = validateRows(payload.rows);
       slip = slipReceipt(user, payload.slipReceiptId, payload.businessDate, location);
+      duplicateMode = key(payload.duplicateMode);
+      if (["ADD_NEW", "OVERWRITE_IN_SCOPE"].indexOf(duplicateMode) === -1)
+        throw new Error("Run the AWB duplicate check and choose Add new entry or Overwrite permitted entry before uploading.");
     } catch (error) {
       return Utility.error(error.message);
     }
@@ -669,7 +726,7 @@ const Banking = (() => {
       if (duplicateInsideLock) return duplicateInsideLock;
 
       const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-      const sheetDuplicate = existingBatchByClientRequest(spreadsheet, user, payload.clientRequestId);
+      const sheetDuplicate = existingBatchByClientRequest(spreadsheet, user, payload.clientRequestId, rows.length);
       if (sheetDuplicate) {
         if (receiptKey) storeBatchReceipt(receiptKey, sheetDuplicate);
         return sheetDuplicate;
@@ -681,44 +738,136 @@ const Banking = (() => {
       const uploadedAt = new Date();
       const uploadedBy = text(userValue(user, "RIDER_NAME") || userValue(user, "USERNAME"));
       const uploadedEmail = text(userValue(user, "REGISTERED_EMAIL"));
-      const storedRows = rows.map(row => [
-        batchId,
-        text(payload.clientRequestId),
-        bankingDateText,
-        location.zone,
-        location.warehouse,
-        location.lmHub
-      ].concat(row).concat([
-        slip.fileUrl,
-        uploadedBy,
-        uploadedEmail,
-        uploadedAt
-      ]));
-      const startRow = sheet.getLastRow() + 1;
-      sheet.getRange(startRow, 1, storedRows.length, STORAGE_HEADERS.length).setValues(storedRows);
+      const destinationHeaders = storageHeadersForSheet(sheet) || STORAGE_HEADERS.slice();
+      const storedRows = rows.map(row => destinationHeaders.map(header => {
+        if (header === "Upload Batch ID") return batchId;
+        if (header === "Client Request ID") return text(payload.clientRequestId);
+        if (header === "Banking Date") return bankingDateText;
+        if (header === "Zone") return location.zone;
+        if (header === "Warehouse") return location.warehouse;
+        if (header === "LM Hub") return location.lmHub;
+        if (header === "Banking Slip") return slip.fileUrl;
+        if (header === "Uploaded By") return uploadedBy;
+        if (header === "Uploaded Email") return uploadedEmail;
+        if (header === "Uploaded At") return uploadedAt;
+        const templateIndex = TEMPLATE_HEADERS.indexOf(header);
+        return templateIndex >= 0 ? row[templateIndex] : "";
+      }));
+      const allowed = allowedLocationMap(user);
+      const awbIndex = TEMPLATE_HEADERS.indexOf("AWB");
+      const storageAwbIndex = destinationHeaders.indexOf("AWB");
+      const awbs = rows.map(row => normalizedAwb(row[awbIndex]));
+      const matchesByAwb = repositoryAwbMatches(spreadsheet, awbs);
+      const appendStartRow = sheet.getLastRow() + 1;
+      const appendRows = [];
+      const updates = [];
+      const deletions = [];
+      const audits = [];
+      let overwrittenCount = 0;
+
+      storedRows.forEach((storedRow, index) => {
+        const awb = normalizedAwb(storedRow[storageAwbIndex]);
+        const allMatches = matchesByAwb[awb] || [];
+        const candidate = latestAllowedMatch(allMatches, allowed);
+        const replacement = rowObject(destinationHeaders, storedRow, null);
+
+        if (duplicateMode === "OVERWRITE_IN_SCOPE" && candidate) {
+          overwrittenCount++;
+          if (candidate.sheetName === sheet.getName()) {
+            updates.push({ sheet, rowNumber: candidate.rowNumber, storedRow });
+            audits.push(auditRow(
+              user, location, "OVERWRITE", candidate.record, replacement,
+              { sheetName: candidate.sheetName, rowNumber: candidate.rowNumber },
+              { sheetName: sheet.getName(), rowNumber: candidate.rowNumber }, batchId
+            ));
+          } else {
+            const destinationRow = appendStartRow + appendRows.length;
+            appendRows.push(storedRow);
+            deletions.push(candidate);
+            audits.push(auditRow(
+              user, location, "OVERWRITE_MOVE_MONTH", candidate.record, replacement,
+              { sheetName: candidate.sheetName, rowNumber: candidate.rowNumber },
+              { sheetName: sheet.getName(), rowNumber: destinationRow }, batchId
+            ));
+          }
+        } else {
+          const destinationRow = appendStartRow + appendRows.length;
+          appendRows.push(storedRow);
+          if (duplicateMode === "ADD_NEW" && candidate) {
+            audits.push(auditRow(
+              user, location, "ADD_NEW_DUPLICATE", candidate.record, replacement,
+              { sheetName: candidate.sheetName, rowNumber: candidate.rowNumber },
+              { sheetName: sheet.getName(), rowNumber: destinationRow }, batchId
+            ));
+          }
+        }
+      });
+
+      let audit = null;
+      let auditStartRow = 0;
+      if (audits.length) {
+        audit = auditSheet(spreadsheet);
+        auditStartRow = audit.getLastRow() + 1;
+        audit.getRange(auditStartRow, 1, audits.length, AUDIT_HEADERS.length).setValues(audits);
+        audit.getRange(auditStartRow, AUDIT_HEADERS.indexOf("Timestamp") + 1, audits.length, 1)
+          .setNumberFormat("dd-MM-yyyy HH:mm:ss");
+      }
 
       const warnings = [];
-      try { setHyperlinks(sheet, startRow, storedRows); }
-      catch (error) { warnings.push("Links were stored but hyperlink styling could not be applied."); }
-      try {
-        sheet.getRange(startRow, STORAGE_HEADERS.indexOf("Banking Date") + 1, storedRows.length, 1).setNumberFormat("dd-MM-yyyy");
-        sheet.getRange(startRow, STORAGE_HEADERS.indexOf("Uploaded At") + 1, storedRows.length, 1)
-          .setNumberFormat("dd-MM-yyyy HH:mm:ss");
-      } catch (error) {}
+      if (appendRows.length) {
+        sheet.getRange(appendStartRow, 1, appendRows.length, destinationHeaders.length).setValues(appendRows);
+        try { setHyperlinks(sheet, appendStartRow, appendRows, destinationHeaders); }
+        catch (error) { warnings.push("Links were stored but hyperlink styling could not be applied to added rows."); }
+        try { formatStoredRows(sheet, appendStartRow, appendRows.length, destinationHeaders); } catch (error) {}
+      }
+
+      updates.forEach(update => {
+        update.sheet.getRange(update.rowNumber, 1, 1, destinationHeaders.length).setValues([update.storedRow]);
+        try { setHyperlinks(update.sheet, update.rowNumber, [update.storedRow], destinationHeaders); }
+        catch (error) { warnings.push("One overwritten row was saved without hyperlink styling."); }
+        try { formatStoredRows(update.sheet, update.rowNumber, 1, destinationHeaders); } catch (error) {}
+      });
+
+      const deletionsBySheet = {};
+      deletions.forEach(match => {
+        if (!deletionsBySheet[match.sheetName]) deletionsBySheet[match.sheetName] = { sheet: match.sheet, rows: [] };
+        deletionsBySheet[match.sheetName].rows.push(match.rowNumber);
+      });
+      Object.keys(deletionsBySheet).forEach(sheetName => {
+        const group = deletionsBySheet[sheetName];
+        group.rows.sort((left, right) => right - left).forEach(rowNumber => group.sheet.deleteRow(rowNumber));
+      });
+
+      if (audit && audits.length) {
+        try {
+          audit.getRange(auditStartRow, AUDIT_HEADERS.indexOf("Outcome") + 1, audits.length, 1)
+            .setValues(audits.map(() => ["COMMITTED"]));
+        } catch (error) {
+          warnings.push("Banking data was saved, but the audit outcome marker remains PENDING. Ask a Super Admin to review the Banking Audit Log.");
+        }
+      }
+
+      const addedCount = storedRows.length - overwrittenCount;
+      const operationMessage = storedRows.length + " banking line item(s) processed successfully: " +
+        addedCount + " added, " + overwrittenCount + " overwritten.";
 
       const baseResult = Utility.success(
-        storedRows.length + " banking line item(s) uploaded successfully.",
+        operationMessage,
         {
           batchId,
           rowCount: storedRows.length,
           sheetName: sheet.getName(),
           bankingDate: bankingDateText,
           slipUrl: slip.fileUrl,
+          addedCount,
+          overwrittenCount,
+          auditLogCount: audits.length,
+          duplicateMode,
           warnings
         }
       );
       if (receiptKey && !storeBatchReceipt(receiptKey, baseResult)) {
-        baseResult.data.warnings.push("The duplicate-protection cache was unavailable; the permanent Client Request ID was still saved in the monthly sheet.");
+        baseResult.data.warnings.push("The duplicate-protection cache was unavailable. Verify the Batch ID before retrying this upload.");
       }
       PropertiesService.getScriptProperties().deleteProperty(SLIP_RECEIPT_PREFIX + slip.receiptId);
       if (slip.requestPropertyKey) {
@@ -726,7 +875,7 @@ const Banking = (() => {
       }
 
       try {
-        const exportRows = storedRows.map(row => BULK_EXPORT_HEADERS.map(header => row[STORAGE_HEADERS.indexOf(header)]));
+        const exportRows = storedRows.map(row => BULK_EXPORT_HEADERS.map(header => row[destinationHeaders.indexOf(header)]));
         sendUploadMail(spreadsheet, user, location, bankingDate, storedRows.length, slip, batchId, exportRows);
         baseResult.data.emailSent = true;
       } catch (error) {
@@ -797,6 +946,161 @@ const Banking = (() => {
     return !!map[[key(record.Zone), key(record.Warehouse), key(record["LM Hub"])].join("|")];
   }
 
+  function repositoryAwbMatches(spreadsheet, awbs) {
+    const wanted = {};
+    (awbs || []).forEach(awb => { if (normalizedAwb(awb)) wanted[normalizedAwb(awb)] = true; });
+    const matches = {};
+    Object.keys(wanted).forEach(awb => { matches[awb] = []; });
+
+    monthlySheets(spreadsheet).forEach(sheet => {
+      if (sheet.getLastRow() < 2) return;
+      const headers = storageHeadersForSheet(sheet);
+      if (!headers) return;
+      const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues();
+      values.forEach((row, index) => {
+        const awb = normalizedAwb(row[headers.indexOf("AWB")]);
+        if (!wanted[awb]) return;
+        const record = rowObject(headers, row, null);
+        const uploadedAt = row[headers.indexOf("Uploaded At")];
+        const uploadedSort = uploadedAt instanceof Date && !isNaN(uploadedAt)
+          ? uploadedAt.getTime()
+          : Date.parse(text(uploadedAt)) || 0;
+        matches[awb].push({
+          awb,
+          sheet,
+          sheetName: sheet.getName(),
+          rowNumber: index + 2,
+          values: row.slice(),
+          record,
+          sortKey: uploadedSort || (Date.parse(parseDisplayDate(record["Banking Date"])) || 0),
+          orderKey: index + 2
+        });
+      });
+    });
+    return matches;
+  }
+
+  function latestAllowedMatch(matches, allowed) {
+    return (matches || []).filter(match => recordAllowed(allowed, match.record)).sort((left, right) =>
+      (right.sortKey - left.sortKey) || right.sheetName.localeCompare(left.sheetName) ||
+      (right.orderKey - left.orderKey)
+    )[0] || null;
+  }
+
+  function duplicateSummary(awb, matches, allowed) {
+    const inScope = (matches || []).filter(match => recordAllowed(allowed, match.record));
+    const candidate = latestAllowedMatch(matches, allowed);
+    return {
+      awb,
+      totalMatches: (matches || []).length,
+      inScopeMatches: inScope.length,
+      outsideScopeMatches: Math.max(0, (matches || []).length - inScope.length),
+      overwriteCandidate: candidate ? {
+        batchId: text(candidate.record["Upload Batch ID"]),
+        bankingDate: text(candidate.record["Banking Date"]),
+        zone: text(candidate.record.Zone),
+        warehouse: text(candidate.record.Warehouse),
+        lmHub: text(candidate.record["LM Hub"]),
+        uploadedAt: text(candidate.record["Uploaded At"])
+      } : null
+    };
+  }
+
+  function preflight(user, payload) {
+    requireAccess(user);
+    payload = payload || {};
+    try {
+      const location = locationForUser(user, payload.location || {});
+      if (!location) throw new Error("Choose a permitted Zone, Warehouse and LM Hub.");
+      validateBusinessDate(payload.businessDate);
+      validateHeaders(payload.headers);
+      const rows = validateRows(payload.rows);
+      const awbIndex = TEMPLATE_HEADERS.indexOf("AWB");
+      const awbs = rows.map(row => normalizedAwb(row[awbIndex]));
+      const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+      const allowed = allowedLocationMap(user);
+      const matches = repositoryAwbMatches(spreadsheet, awbs);
+      const duplicates = awbs.map(awb => duplicateSummary(awb, matches[awb], allowed))
+        .filter(summary => summary.totalMatches > 0);
+      return Utility.success(
+        duplicates.length
+          ? duplicates.length + " AWB(s) already exist in the Banking repository."
+          : "No existing AWBs were found. The upload can continue.",
+        {
+          hasDuplicates: duplicates.length > 0,
+          duplicates,
+          inScopeDuplicateAwbs: duplicates.filter(item => item.inScopeMatches > 0).length,
+          outsideScopeMatchCount: duplicates.reduce((sum, item) => sum + item.outsideScopeMatches, 0),
+          checkedAwbs: awbs.length
+        }
+      );
+    } catch (error) {
+      return Utility.error(error.message);
+    }
+  }
+
+  function auditSheet(spreadsheet) {
+    let sheet = spreadsheet.getSheetByName(AUDIT_SHEET_NAME);
+    if (!sheet) sheet = spreadsheet.insertSheet(AUDIT_SHEET_NAME);
+
+    if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
+      const header = sheet.getRange(1, 1, 1, AUDIT_HEADERS.length);
+      header.setValues([AUDIT_HEADERS]).setBackground("#102A56").setFontColor("#FFFFFF")
+        .setFontWeight("bold").setHorizontalAlignment("center").setWrap(true);
+      sheet.setFrozenRows(1);
+      try { header.createFilter(); } catch (error) {}
+      sheet.setColumnWidth(AUDIT_HEADERS.indexOf("Previous Record JSON") + 1, 420);
+      sheet.setColumnWidth(AUDIT_HEADERS.indexOf("Replacement Record JSON") + 1, 420);
+      return sheet;
+    }
+
+    const existing = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), AUDIT_HEADERS.length))
+      .getDisplayValues()[0].slice(0, AUDIT_HEADERS.length);
+    if (!AUDIT_HEADERS.every((header, index) => same(header, existing[index]))) {
+      throw new Error(
+        "The '" + AUDIT_SHEET_NAME + "' sheet does not have the required audit headers. " +
+        "Keep that named sheet blank for automatic setup or use the supplied audit template."
+      );
+    }
+    return sheet;
+  }
+
+  function auditRow(user, location, action, previous, replacement, source, destination, batchId) {
+    return [
+      "BAUD-" + Utilities.formatDate(new Date(), timeZone(), "yyyyMMdd-HHmmss") + "-" +
+        Utilities.getUuid().slice(0, 8).toUpperCase(),
+      new Date(),
+      "PENDING",
+      action,
+      text(replacement.AWB || previous.AWB),
+      text(previous["Upload Batch ID"]),
+      batchId,
+      text(userValue(user, "USERNAME")),
+      text(userValue(user, "RIDER_NAME") || userValue(user, "USERNAME")),
+      text(userValue(user, "REGISTERED_EMAIL")),
+      roleOf(user),
+      scopeOf(user),
+      location.zone,
+      location.warehouse,
+      location.lmHub,
+      source.sheetName || "",
+      source.rowNumber || "",
+      destination.sheetName || "",
+      destination.rowNumber || "",
+      JSON.stringify(previous),
+      JSON.stringify(replacement)
+    ];
+  }
+
+  function formatStoredRows(sheet, startRow, rowCount, storageHeaders) {
+    if (!rowCount) return;
+    storageHeaders = storageHeaders || STORAGE_HEADERS;
+    sheet.getRange(startRow, storageHeaders.indexOf("Banking Date") + 1, rowCount, 1)
+      .setNumberFormat("dd-MM-yyyy");
+    sheet.getRange(startRow, storageHeaders.indexOf("Uploaded At") + 1, rowCount, 1)
+      .setNumberFormat("dd-MM-yyyy HH:mm:ss");
+  }
+
   function filterRecord(record, filters) {
     filters = filters || {};
     const isoDate = parseDisplayDate(record["Banking Date"]);
@@ -812,15 +1116,15 @@ const Banking = (() => {
   }
 
   function readSheetRecords(sheet) {
-    if (sheet.getLastRow() < 2 || sheet.getLastColumn() < STORAGE_HEADERS.length) return [];
-    const headers = sheet.getRange(1, 1, 1, STORAGE_HEADERS.length).getDisplayValues()[0];
-    if (!STORAGE_HEADERS.every((header, index) => same(header, headers[index]))) return [];
-    const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, STORAGE_HEADERS.length);
+    if (sheet.getLastRow() < 2) return [];
+    const headers = storageHeadersForSheet(sheet);
+    if (!headers) return [];
+    const range = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length);
     const values = range.getValues();
     return values.map(row => rowObject(headers, row, null));
   }
 
-  function existingBatchByClientRequest(spreadsheet, user, clientRequestId) {
+  function existingBatchByClientRequest(spreadsheet, user, clientRequestId, expectedRowCount) {
     const wanted = text(clientRequestId);
     if (!wanted) return null;
     const userEmail = text(userValue(user, "REGISTERED_EMAIL")).toLowerCase();
@@ -831,9 +1135,20 @@ const Banking = (() => {
         text(item["Uploaded Email"]).toLowerCase() === userEmail
       );
       if (!record) return false;
+      const matchingRows = readSheetRecords(sheet).filter(item =>
+        text(item["Client Request ID"]) === wanted &&
+        text(item["Uploaded Email"]).toLowerCase() === userEmail
+      );
+      if (Number(expectedRowCount || 0) && matchingRows.length !== Number(expectedRowCount)) {
+        found = Utility.error(
+          "A partial Banking save was detected for this request (" + matchingRows.length + " of " +
+          Number(expectedRowCount) + " rows). Do not upload again. Ask a Super Admin to inspect PENDING rows in Banking Audit Log."
+        );
+        return true;
+      }
       found = Utility.success("This banking upload was already saved safely.", {
         batchId: text(record["Upload Batch ID"]),
-        rowCount: readSheetRecords(sheet).filter(item => text(item["Client Request ID"]) === wanted).length,
+        rowCount: matchingRows.length,
         sheetName: sheet.getName(),
         bankingDate: text(record["Banking Date"]),
         slipUrl: text(record["Banking Slip"]),
@@ -975,11 +1290,12 @@ const Banking = (() => {
     const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
     let hidden = 0;
     monthlySheets(spreadsheet).forEach(sheet => {
-      if (sheet.getLastColumn() < STORAGE_HEADERS.length) return;
-      const headers = sheet.getRange(1, 1, 1, STORAGE_HEADERS.length).getDisplayValues()[0];
-      if (!STORAGE_HEADERS.every((header, index) => same(header, headers[index]))) return;
+      const headers = storageHeadersForSheet(sheet);
+      if (!headers) return;
+      const clientIdColumn = headers.indexOf("Client Request ID");
+      if (clientIdColumn < 0) return;
       try {
-        sheet.hideColumns(STORAGE_HEADERS.indexOf("Client Request ID") + 1);
+        sheet.hideColumns(clientIdColumn + 1);
         hidden++;
       } catch (error) {}
     });
@@ -1026,6 +1342,7 @@ const Banking = (() => {
   return {
     context,
     uploadSlip,
+    preflight,
     submit,
     search,
     bulk,
