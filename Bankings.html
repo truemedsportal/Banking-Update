@@ -1,36 +1,52 @@
 <div class="page-container banking-page">
   <header class="page-header banking-page-header">
     <div>
-      <p class="page-eyebrow">CASH COLLECTION</p>
-      <h1>Banking</h1>
-      <p>Upload validated deposit data and retrieve earlier banking batches within your permitted location scope.</p>
+      <p class="page-eyebrow">DAILY CASH CLOSURE</p>
+      <h1>CCR &amp; CDR Banking</h1>
+      <p>Create the Cash Collection Report first, close it with a linked Cash Deposition Report, and monitor every LM Hub from one dashboard.</p>
     </div>
     <div class="banking-scope-chip" id="bankingScopeChip">Loading permitted scope…</div>
   </header>
 
   <div class="banking-tabbar" role="tablist" aria-label="Banking workspace">
-    <button id="bankingUploadTab" class="banking-tab active" type="button" role="tab" aria-selected="true" data-banking-tab="upload">
-      <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
-      Upload Banking
+    <button id="bankingCcrTab" class="banking-tab active" type="button" role="tab" aria-selected="true" data-banking-tab="ccr">
+      <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+      Create CCR
     </button>
+    <button id="bankingUploadTab" class="banking-tab" type="button" role="tab" aria-selected="false" data-banking-tab="upload">
+      <span class="material-symbols-outlined" aria-hidden="true">upload_file</span>
+      Complete CDR
+    </button>
+    <button id="bankingDashboardTab" class="banking-tab" type="button" role="tab" aria-selected="false" data-banking-tab="dashboard"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span> Leadership Dashboard</button>
     <button id="bankingRepositoryTab" class="banking-tab" type="button" role="tab" aria-selected="false" data-banking-tab="repository">
       <span class="material-symbols-outlined" aria-hidden="true">inventory_2</span>
       Banking Repository
     </button>
   </div>
 
-  <section id="bankingUploadPanel" class="banking-panel" role="tabpanel" aria-labelledby="bankingUploadTab">
-    <div id="bankingMailAuthPanel" class="banking-mail-auth hidden" role="alert">
-      <span class="material-symbols-outlined" aria-hidden="true">mark_email_unread</span>
-      <div>
-        <strong>Email service needs one-time authorization</strong>
-        <p id="bankingMailAuthMessage">The Apps Script deployment owner must approve the Google Mail permission once. Operational users will not be asked for permission.</p>
-      </div>
-      <button id="btnAuthorizeBankingMail" type="button" class="primary-btn">Authorize email service</button>
-      <button id="btnRetryBankingMail" type="button" class="secondary-btn hidden">Check permission &amp; retry email</button>
+  <div id="bankingMailAuthPanel" class="banking-mail-auth hidden" role="alert">
+    <span class="material-symbols-outlined" aria-hidden="true">mark_email_unread</span>
+    <div>
+      <strong>Email service needs one-time Google approval</strong>
+      <p id="bankingMailAuthMessage">A Super Admin signed in as the Apps Script deployment owner must approve Gmail once. The approval is completed securely on Google's consent screen.</p>
     </div>
+    <button id="btnAuthorizeBankingMail" type="button" class="primary-btn">Authorize email service</button>
+    <button id="btnRetryBankingMail" type="button" class="secondary-btn hidden">Check permission &amp; retry email</button>
+  </div>
+
+  <section id="bankingCcrPanel" class="banking-panel" role="tabpanel" aria-labelledby="bankingCcrTab">
+    <article class="card banking-card"><div class="card-header banking-card-heading"><div><span class="banking-step-number">1</span><div><h2>Cash Collection Report (CCR)</h2><p>Record denomination quantities and UPI collection. One CCR is allowed per LM Hub and collection date.</p></div></div></div><div class="card-body">
+      <section class="banking-ccr-search" aria-labelledby="ccrSearchTitle"><div class="banking-ccr-search-heading"><div><h3 id="ccrSearchTitle">Find an existing CCR</h3><p>Search every CCR in your permitted scope by full/partial CCR number or collection date range.</p></div><span id="ccrSearchCount">Enter a CCR number or date range</span></div><div class="banking-ccr-search-grid"><div class="form-group"><label for="ccrSearchNumber">CCR number</label><input id="ccrSearchNumber" class="form-control" type="search" placeholder="Example: CCR-20260824"></div><div class="form-group"><label for="ccrSearchFrom">From date</label><input id="ccrSearchFrom" class="form-control" type="date"></div><div class="form-group"><label for="ccrSearchTo">To date</label><input id="ccrSearchTo" class="form-control" type="date"></div><div class="banking-ccr-search-actions"><button id="btnSearchCcr" class="primary-btn" type="button"><span class="material-symbols-outlined">search</span> Search CCR</button><button id="btnResetCcrSearch" class="secondary-btn" type="button">Clear</button></div></div><div id="ccrSearchResults" class="table-responsive banking-ccr-search-results hidden"><table class="table"><thead><tr><th>CCR ID</th><th>Collection date</th><th>Location</th><th>Total</th><th>Status</th><th>CDR batch</th><th>Action</th></tr></thead><tbody id="ccrSearchRows"></tbody></table></div></section>
+      <div class="banking-ccr-edit-toolbar"><div class="form-group"><label for="ccrEditId">Edit an existing open CCR</label><select id="ccrEditId" class="form-control"><option value="">Create a new CCR</option></select><small class="form-hint">Only CCRs without a completed CDR can be edited. Selecting one loads its saved denominations.</small></div><div id="ccrEditLockNotice" class="banking-edit-lock-note">CCR identity remains fixed while editing; update the cash/UPI values and save.</div></div>
+      <div class="banking-location-grid"><div class="form-group"><label for="ccrCollectionDate">Cash Collection date <span class="required">*</span></label><input id="ccrCollectionDate" class="form-control" type="date" required></div><div class="form-group"><label for="ccrZone">Zone</label><select id="ccrZone" class="form-control"><option value="">Select Zone</option></select></div><div class="form-group"><label for="ccrWarehouse">Warehouse</label><select id="ccrWarehouse" class="form-control"><option value="">Select Warehouse</option></select></div><div class="form-group"><label for="ccrHub">LM Hub</label><select id="ccrHub" class="form-control"><option value="">Select LM Hub</option></select></div></div>
+      <h3 class="ccr-section-title">Denomination quantities</h3><div class="ccr-denomination-grid"><label>₹1 coin<input class="form-control ccr-denomination" id="ccrCoin1" type="number" min="0" step="1" value="0"></label><label>₹2 coin<input class="form-control ccr-denomination" id="ccrCoin2" type="number" min="0" step="1" value="0"></label><label>₹5 coin<input class="form-control ccr-denomination" id="ccrCoin5" type="number" min="0" step="1" value="0"></label><label>₹10 coin<input class="form-control ccr-denomination" id="ccrCoin10" type="number" min="0" step="1" value="0"></label><label>₹10 note<input class="form-control ccr-denomination" id="ccrNote10" type="number" min="0" step="1" value="0"></label><label>₹20 note<input class="form-control ccr-denomination" id="ccrNote20" type="number" min="0" step="1" value="0"></label><label>₹50 note<input class="form-control ccr-denomination" id="ccrNote50" type="number" min="0" step="1" value="0"></label><label>₹100 note<input class="form-control ccr-denomination" id="ccrNote100" type="number" min="0" step="1" value="0"></label><label>₹200 note<input class="form-control ccr-denomination" id="ccrNote200" type="number" min="0" step="1" value="0"></label><label>₹500 note<input class="form-control ccr-denomination" id="ccrNote500" type="number" min="0" step="1" value="0"></label><label>UPI amount<input class="form-control ccr-denomination" id="ccrUpiAmount" type="number" min="0" step="0.01" value="0"></label></div>
+      <div class="ccr-total-strip"><span>Calculated collection</span><strong id="ccrCalculatedTotal">₹0.00</strong><small id="ccrCalculatedBreakdown">Cash ₹0.00 · UPI ₹0.00</small></div><div id="ccrEditRemarksGroup" class="form-group hidden"><label for="ccrEditRemarks">Reason for CCR change <span class="required">*</span></label><textarea id="ccrEditRemarks" class="form-control" rows="3" maxlength="500" placeholder="Explain what was corrected and why (minimum 5 characters)"></textarea><small class="form-hint">This reason is retained in the CCR Register and included in the revised email.</small></div><div class="banking-ccr-actions"><button id="btnSubmitCcr" class="primary-btn" type="button"><span class="material-symbols-outlined">send</span><span id="btnSubmitCcrLabel">Confirm CCR &amp; send email</span></button><button id="btnResetCcr" class="secondary-btn" type="button"><span class="material-symbols-outlined">restart_alt</span> Reset form</button></div><div id="ccrSubmitResult" class="banking-upload-result hidden"></div>
+    </div></article>
+  </section>
+
+  <section id="bankingUploadPanel" class="banking-panel hidden" role="tabpanel" aria-labelledby="bankingUploadTab">
     <div class="banking-workflow-strip" aria-label="Banking upload steps">
-      <div><b>1</b><span>Select banking date and permitted LM Hub</span></div>
+      <div><b>1</b><span>Select an open CCR and Cash Deposition date</span></div>
       <div><b>2</b><span>Choose the approved data file</span></div>
       <div><b>3</b><span>Preview and attach the mandatory slip</span></div>
       <div><b>4</b><span>Submit once and wait for confirmation</span></div>
@@ -40,15 +56,19 @@
       <div class="card-header banking-card-heading">
         <div>
           <span class="banking-step-number">1</span>
-          <div><h2>Banking date and location</h2><p>The date must be yesterday or earlier. Location choices come from your access mapping.</p></div>
+          <div><h2>Linked CCR, deposition date and location</h2><p>A CDR cannot be created until the LM Hub has submitted its CCR.</p></div>
         </div>
       </div>
       <div class="card-body">
+        <section class="banking-cdr-selection" aria-labelledby="bankingCcrSelectionTitle">
+          <div class="banking-cdr-selection-head"><div><span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span><div><h3 id="bankingCcrSelectionTitle">Choose collection day(s) to deposit</h3><p>Select one open CCR for a normal CDR, or select multiple collection dates from the same LM Hub for one combined CDR and one bank slip.</p></div></div><span class="banking-combined-badge">Single + combined CDR enabled</span></div>
+          <div class="form-group banking-ccr-picker-group"><span class="form-label">Open CCRs in your scope <span class="required">*</span></span><select id="bankingCcrId" class="hidden" multiple required aria-hidden="true" tabindex="-1"></select><details id="bankingCcrPicker" class="banking-ccr-picker"><summary><span id="bankingCcrPickerSummary">Choose an open CCR</span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></summary><div class="banking-ccr-picker-menu"><label class="banking-ccr-picker-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><input id="bankingCcrPickerSearch" type="search" placeholder="Search by date, hub or CCR number" autocomplete="off"></label><div id="bankingCcrPickerOptions" class="banking-ccr-picker-options"></div></div></details><div id="bankingSelectedCcrChips" class="banking-selected-ccr-chips" aria-live="polite"></div><div class="banking-ccr-selection-actions"><button id="btnSelectHubOpenCcrs" class="secondary-btn" type="button"><span class="material-symbols-outlined">playlist_add_check</span> Select all open days for this hub</button><button id="btnClearCcrSelection" class="secondary-btn" type="button"><span class="material-symbols-outlined">restart_alt</span> Clear selection</button></div></div>
+        </section>
         <div class="banking-location-grid">
           <div class="form-group">
-            <label for="bankingBusinessDate">Banking date <span class="required">*</span></label>
+            <label for="bankingBusinessDate">Cash Deposition date <span class="required">*</span></label>
             <input id="bankingBusinessDate" class="form-control" type="date" required>
-            <small class="form-hint">The business date represented by this banking file.</small>
+            <small class="form-hint">Must be on or after the selected Cash Collection date.</small>
           </div>
           <div class="form-group">
             <label for="bankingZone">Zone <span class="required">*</span></label>
@@ -63,7 +83,9 @@
             <select id="bankingHub" class="form-control" required><option value="">Select LM Hub</option></select>
           </div>
         </div>
+        <div id="bankingSelectedCcrSummary" class="banking-email-notice" role="status">Select at least one open CCR.</div>
         <div id="bankingEmailNotice" class="banking-email-notice" role="status"></div>
+        <div class="form-group"><label for="bankingCdrRemarks">CDR remarks <span class="required">*</span></label><textarea id="bankingCdrRemarks" class="form-control" rows="3" maxlength="500" placeholder="Example: Deposited together after Sunday / public holiday (minimum 5 characters)" required></textarea><small class="form-hint">Required for every CDR and stored against all linked CCRs.</small></div>
       </div>
     </article>
 
@@ -86,6 +108,7 @@
           <input id="bankingDataFile" type="file" accept=".xlsx,.xls,.ods,.csv" required>
         </label>
         <div id="bankingFileSummary" class="banking-file-summary hidden" role="status"></div>
+        <div id="bankingAmountMatchPanel" class="banking-amount-match hidden" role="alert" aria-live="polite"><span id="bankingAmountMatchIcon" class="material-symbols-outlined" aria-hidden="true">calculate</span><div><strong id="bankingAmountMatchTitle">CCR/CDR amount check</strong><p id="bankingAmountMatchMessage"></p><small class="banking-tolerance-note">Rounding tolerance: ±₹1.00</small></div><dl><div><dt>CCR total</dt><dd id="bankingMatchCcrTotal">₹0.00</dd></div><div><dt>File COD</dt><dd id="bankingMatchCodTotal">₹0.00</dd></div><div><dt>File UPI</dt><dd id="bankingMatchUpiTotal">₹0.00</dd></div><div><dt>File total</dt><dd id="bankingMatchFileTotal">₹0.00</dd></div><div><dt>Difference</dt><dd id="bankingMatchDifference">₹0.00</dd></div></dl></div>
         <div id="bankingDataPreview" class="banking-preview hidden">
           <div class="banking-preview-heading"><h3>Data preview</h3><span id="bankingPreviewCount"></span></div>
           <div class="table-responsive"><table class="table banking-preview-table"><thead id="bankingPreviewHead"></thead><tbody id="bankingPreviewBody"></tbody></table></div>
@@ -119,10 +142,18 @@
       <div><strong>Ready to upload?</strong><span>Do not close the app until the success message and batch ID appear.</span></div>
       <button id="btnSubmitBanking" type="button" class="primary-btn">
         <span class="material-symbols-outlined" aria-hidden="true">cloud_upload</span>
-        Upload Banking
+        Complete CDR
       </button>
     </div>
     <div id="bankingUploadResult" class="banking-upload-result hidden" role="status"></div>
+  </section>
+
+  <section id="bankingDashboardPanel" class="banking-panel hidden" role="tabpanel" aria-labelledby="bankingDashboardTab">
+    <article class="card banking-card banking-dashboard-filters"><div class="card-header banking-card-heading"><div><h2>Dashboard scope</h2><p>Starts with every permitted location and date. Narrow the leadership view when required.</p></div><button id="btnResetBankingDashboard" class="secondary-btn" type="button">Reset</button></div><div class="card-body"><div class="banking-dashboard-filter-grid"><div class="form-group"><label for="bankingDashboardFrom">From date</label><input id="bankingDashboardFrom" class="form-control" type="date"></div><div class="form-group"><label for="bankingDashboardTo">To date</label><input id="bankingDashboardTo" class="form-control" type="date"></div><div class="form-group"><label for="bankingDashboardZone">Zone</label><select id="bankingDashboardZone" class="form-control"><option value="">All permitted Zones</option></select></div><div class="form-group"><label for="bankingDashboardWarehouse">Warehouse</label><select id="bankingDashboardWarehouse" class="form-control"><option value="">All permitted Warehouses</option></select></div><div class="form-group"><label for="bankingDashboardHub">LM Hub</label><select id="bankingDashboardHub" class="form-control"><option value="">All permitted LM Hubs</option></select></div><div class="form-group"><label for="bankingDashboardRider">Created by</label><input id="bankingDashboardRider" class="form-control" type="search" placeholder="Rider / user name"></div><button id="btnApplyBankingDashboard" class="primary-btn" type="button">Apply filters</button></div></div></article>
+    <div class="banking-leadership-metrics"><article><span>CCR created</span><strong id="bankingMetricCcr">0</strong></article><article><span>CDR completed</span><strong id="bankingMetricDone">0</strong></article><article><span>CDR pending</span><strong id="bankingMetricPending">0</strong></article><article><span>Total collected</span><strong id="bankingMetricCollected">₹0</strong></article><article><span>Total deposited</span><strong id="bankingMetricDeposited">₹0</strong></article></div>
+    <article class="card banking-card"><div class="card-header banking-card-heading"><div><h2>Cash deposition by LM Hub</h2><p>Vertical comparison of collected and deposited value for the selected scope.</p></div><button id="btnRefreshBankingDashboard" class="secondary-btn" type="button">Refresh</button></div><div id="bankingHubVerticalChart" class="banking-vertical-chart"></div></article>
+    <article class="card banking-card"><div class="card-header banking-card-heading"><div><h2>LM Hub closure details</h2><p>Latest scoped position with email delivery visibility.</p></div></div><div class="table-responsive banking-dashboard-table-wrap"><table class="table"><thead><tr><th>LM Hub</th><th>Zone / Warehouse</th><th>Collection date</th><th>Collected</th><th>Status</th><th>Email</th></tr></thead><tbody id="bankingDashboardRows"><tr><td colspan="6">Loading dashboard…</td></tr></tbody></table></div></article>
+    <article class="card banking-card"><div class="card-header banking-card-heading"><div><h2>Cash deposition trend</h2><p>Daily collected versus closed value for business insight.</p></div></div><div id="bankingTrendBars" class="banking-vertical-chart banking-trend-vertical"></div></article>
   </section>
 
   <section id="bankingRepositoryPanel" class="banking-panel hidden" role="tabpanel" aria-labelledby="bankingRepositoryTab">
@@ -158,17 +189,13 @@
         </div>
         <div class="banking-filter-actions">
           <button id="btnSearchBankingRepository" type="button" class="primary-btn">Search Repository</button>
-          <button id="btnDownloadBankingBulk" type="button" class="secondary-btn banking-download-bulk" disabled>
-            <span class="material-symbols-outlined" aria-hidden="true">download</span>
-            Download all results
-          </button>
           <button id="btnResetBankingRepository" type="button" class="secondary-btn">Reset</button>
         </div>
       </div>
     </article>
 
     <article class="card banking-card banking-repository-card">
-      <div class="card-header banking-card-heading">
+      <div class="card-header banking-card-heading banking-repository-heading">
         <div><h2>Uploaded batches</h2><p id="bankingRepositorySummary">Choose filters and search.</p></div>
         <button id="btnDownloadBankingBulkResults" type="button" class="primary-btn banking-download-bulk" disabled>
           <span class="material-symbols-outlined" aria-hidden="true">download</span>
@@ -177,8 +204,8 @@
       </div>
       <div class="table-responsive">
         <table class="table banking-repository-table">
-          <thead><tr><th>Banking Date</th><th>Zone</th><th>Warehouse</th><th>LM Hub</th><th>Lines</th><th>Uploaded By</th><th>Uploaded At</th><th>Slip</th><th>File</th><th>Email</th></tr></thead>
-          <tbody id="bankingRepositoryRows"><tr><td colspan="10" class="banking-empty">No banking search has been run.</td></tr></tbody>
+          <thead><tr><th>Collection Date</th><th>Deposition Date</th><th>CCR ID</th><th>Zone</th><th>Warehouse</th><th>LM Hub</th><th>Lines</th><th>Uploaded By</th><th>Status</th><th>Receipt</th><th>File</th><th>Email status</th></tr></thead>
+          <tbody id="bankingRepositoryRows"><tr><td colspan="12" class="banking-empty">No banking search has been run.</td></tr></tbody>
         </table>
       </div>
     </article>
