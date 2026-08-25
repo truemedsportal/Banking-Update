@@ -7,9 +7,40 @@
  * ============================================================
  */
 
+const CSR_DATA_SPREADSHEET_ID = "1XozalJ2xW9SGSEXjGEAKJ4sQvnbNF3qguNLviCEh3uM";
+
+const CSR_CALLING_SHEET_HEADERS = Object.freeze([
+  "CSR_TICKET_ID", "SUBMISSION_ID", "ORDER_NUMBER", "RIDER_NAME",
+  "EMPLOYEE_ID", "ZONE", "WAREHOUSE", "LM_HUB", "REASON",
+  "MANDATORY_PROOF_LINK", "OPTIONAL_PROOF_LINK",
+  "FIRST_ATTEMPT_DELIVERY_DATE_TIME", "LAST_ATTEMPT_DELIVERY_DATE_TIME",
+  "PRIOR_SUBMISSION_COUNT", "NDR_PUSHED_BY", "NDR_PUSHED_BY_ROLE",
+  "NDR_PUSHED_DATE_TIME", "RTO_REVIEWED_BY", "RTO_APPROVED_ON",
+  "RTO_MANAGER_REMARKS", "CSR_TICKET_CREATED_AT", "CSR_TICKET_CREATED_BY",
+  "CALLING_FINAL_STATUS", "CURRENT_STATUS", "CURRENT_ASSIGNED_AGENT",
+  "LAST_CSR_ACTIVITY_AT", "CSR_REVIEW_OPENED_BY", "CSR_REVIEW_OPENED_AT",
+  "CSR_REVIEW_LOCK_EXPIRES_AT", "CSR_ASSIGNMENT_COMPLETED_AT",
+  "CSR_ASSIGNMENT_REVIEW_TIME", "ASSIGNED_BY_1", "CALL_1_ASSIGNED_DATE_TIME",
+  "CALLING_AGENT_1_NAME", "CALL_1_REVIEW_OPENED_AT", "CALLING_1_REMARK",
+  "CALLING_1_COMPLETED_DATE_TIME", "CALL_1_ASSIGNMENT_TO_COMPLETION_TIME",
+  "ASSIGNED_BY_2", "CALL_2_ASSIGNED_DATE_TIME", "CALLING_AGENT_2_NAME",
+  "CALL_2_REVIEW_OPENED_AT", "CALLING_2_REMARK", "CALLING_2_COMPLETED_DATE_TIME",
+  "CALL_2_ASSIGNMENT_TO_COMPLETION_TIME", "ASSIGNED_BY_3",
+  "CALL_3_ASSIGNED_DATE_TIME", "CALLING_AGENT_3_NAME", "CALL_3_REVIEW_OPENED_AT",
+  "CALLING_3_REMARK", "CALLING_3_COMPLETED_DATE_TIME",
+  "CALL_3_ASSIGNMENT_TO_COMPLETION_TIME", "FINAL_OUTCOME", "CSR_CLOSED_AT",
+  "TOTAL_TIME_TAKEN_FOR_REVIEW"
+]);
+
+const CSR_AUDIT_SHEET_HEADERS = Object.freeze([
+  "TIMESTAMP", "CSR_TICKET_ID", "SUBMISSION_ID", "ORDER_NUMBER", "ACTION",
+  "OLD_VALUE", "NEW_VALUE", "ASSIGNED_AGENT", "PERFORMED_BY", "ROLE", "REMARKS"
+]);
+
 const Database = (() => {
 
   const SS = SpreadsheetApp.getActiveSpreadsheet();
+  let csrSpreadsheetCache = null;
 
   const SHEETS = Object.freeze({
 
@@ -44,7 +75,25 @@ const Database = (() => {
 
     if (!CACHE.sheets[name]) {
 
-      const sh = SS.getSheetByName(name);
+      const isCsrSheet = name === SHEETS.CALLING || name === SHEETS.CSR_AUDIT;
+      const spreadsheet = isCsrSheet
+        ? (csrSpreadsheetCache || (csrSpreadsheetCache = SpreadsheetApp.openById(CSR_DATA_SPREADSHEET_ID)))
+        : SS;
+      let sh = spreadsheet.getSheetByName(name);
+
+      if (!sh && isCsrSheet) {
+        const headers = name === SHEETS.CALLING
+          ? CSR_CALLING_SHEET_HEADERS
+          : CSR_AUDIT_SHEET_HEADERS;
+        sh = spreadsheet.insertSheet(name);
+        sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+        sh.getRange(1, 1, 1, headers.length)
+          .setBackground(name === SHEETS.CALLING ? "#1267B5" : "#102A56")
+          .setFontColor("#FFFFFF")
+          .setFontWeight("bold")
+          .setWrap(true);
+        sh.setFrozenRows(1);
+      }
 
       if (!sh)
         throw new Error("Sheet not found : " + name);
@@ -1578,4 +1627,52 @@ function clearDriveLinkCache() {
       "DRIVE_LINK_SUBMISSIONS_LIVE"
     ]);
 
+}
+
+/**
+ * One-time deployment-owner helper. Copies existing CSR operational history
+ * from the main portal spreadsheet into the dedicated CSR spreadsheet. It will
+ * never append into a non-empty destination, so rerunning it cannot duplicate
+ * calling records.
+ */
+function migrateCsrDataToSeparateSpreadsheet() {
+  const source = SpreadsheetApp.getActiveSpreadsheet();
+  const destination = SpreadsheetApp.openById(CSR_DATA_SPREADSHEET_ID);
+  const contracts = {
+    "Calling Sheet": CSR_CALLING_SHEET_HEADERS,
+    "CSR Audit Logs": CSR_AUDIT_SHEET_HEADERS
+  };
+  const result = {};
+
+  Object.keys(contracts).forEach(name => {
+    const sourceSheet = source.getSheetByName(name);
+    let targetSheet = destination.getSheetByName(name);
+    if (!targetSheet) targetSheet = destination.insertSheet(name);
+    if (targetSheet.getLastRow() > 1)
+      throw new Error("Destination '" + name + "' already contains data. Migration stopped to prevent duplicates.");
+
+    const headers = contracts[name];
+    targetSheet.clear();
+    targetSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    targetSheet.getRange(1, 1, 1, headers.length)
+      .setBackground(name === "Calling Sheet" ? "#1267B5" : "#102A56")
+      .setFontColor("#FFFFFF").setFontWeight("bold").setWrap(true);
+    targetSheet.setFrozenRows(1);
+
+    if (!sourceSheet || sourceSheet.getLastRow() < 2) {
+      result[name] = 0;
+      return;
+    }
+    const sourceHeaders = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getDisplayValues()[0]
+      .map(value => Utility.safeString(value).toUpperCase().replace(/[^A-Z0-9]+/g, "_"));
+    const sourceValues = sourceSheet.getRange(2, 1, sourceSheet.getLastRow() - 1, sourceSheet.getLastColumn()).getValues();
+    const rows = sourceValues.map(row => headers.map(header => {
+      const index = sourceHeaders.indexOf(header);
+      return index >= 0 ? row[index] : "";
+    }));
+    if (rows.length) targetSheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+    result[name] = rows.length;
+  });
+
+  return result;
 }
