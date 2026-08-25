@@ -15,7 +15,7 @@
   <title><?= appName ?></title>
   <?!= include("CSS"); ?>
   <style>:root { --primary: <?= themeColor ?>; }</style>
-  <script>window.APP_BOOT_CONFIG = <?!= bootConfig ?>;window.FRONTEND_BUILD_VERSION="2.5.2";</script>
+  <script>window.APP_BOOT_CONFIG = <?!= bootConfig ?>;window.FRONTEND_BUILD_VERSION="2.13.0";</script>
 </head>
 <body>
   <div id="loaderOverlay" class="loader-overlay hidden">
@@ -64,6 +64,7 @@
         <section id="attendanceView" class="page hidden"><?!= include("Attendances"); ?></section>
         <section id="regularizationView" class="page hidden"><?!= include("Regularization"); ?></section>
         <section id="rosterView" class="page hidden"><?!= include("Rosters"); ?></section>
+        <section id="riderInsightsView" class="page hidden"><?!= include("RiderInsights"); ?></section>
       </main>
     </div>
   </div>
