@@ -87,3 +87,4 @@ const ManualTranslation = (() => {
 
   return Object.freeze({ translate });
 })();
+
