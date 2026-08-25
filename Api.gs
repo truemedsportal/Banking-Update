@@ -73,6 +73,9 @@ const API = (() => {
       reason: text(data, ["REASON", "Reason", "reason"]),
       status: text(data, ["STATUS", "Status", "status"]) || SUBMISSION_STATUS.PENDING,
       assignedTo: text(data, ["ASSIGNED_TO", "Assigned To", "assignedTo"]),
+      reviewingBy: text(data, ["STATUS", "Status", "status"]) === SUBMISSION_STATUS.UNDER_REVIEW
+        ? text(data, ["ASSIGNED_TO", "Assigned To", "assignedTo"])
+        : "",
       reviewedBy: text(data, ["REVIEWED_BY", "Reviewed By", "reviewedBy"]),
       reviewedOn: text(data, ["REVIEWED_ON", "Reviewed On", "reviewedOn"]),
       lastUpdated: text(data, ["LAST_UPDATED", "Last Updated", "lastUpdated"]),
@@ -241,10 +244,11 @@ const API = (() => {
 
       if (status === SUBMISSION_STATUS.SUBMITTED) return true;
 
+      // Everyone with scope can see a live review. Only the owner of the
+      // review lock can take action; other managers get a read-only row that
+      // names the active reviewer.
       return status === SUBMISSION_STATUS.UNDER_REVIEW &&
-        Submission.isReviewLockActive(record) &&
-          Utility.safeString(record.data.ASSIGNED_TO).toLowerCase() ===
-            Utility.safeString(user.USERNAME).toLowerCase();
+        Submission.isReviewLockActive(record);
     });
 
   }
@@ -303,6 +307,12 @@ const API = (() => {
 
     if (action === "login") return Auth.login(args[0], args[1]);
 
+    // Password recovery must remain available before a session exists. The
+    // public gateway still protects the endpoint and the module rate-limits OTPs.
+    if (action === "passwordResetRequestOtp") return PasswordReset.requestOtp(args[0] || {});
+    if (action === "passwordResetVerifyOtp") return PasswordReset.verifyOtp(args[0] || {});
+    if (action === "passwordResetRequestAdmin") return PasswordReset.requestAdmin(args[0] || {});
+
     // This contains display-only values used by the separately hosted PWA.
     // It intentionally returns no sheet IDs, secrets, user data or session data.
     if (action === "externalBootstrap") {
@@ -321,11 +331,11 @@ const API = (() => {
       const user = requireSession(sessionId);
       return user
         ? Utility.success(SUCCESS.FETCHED, { sessionId, user: userDto(user) })
-        : Utility.error(ERROR.SESSION_EXPIRED);
+        : Utility.error(ERROR.ACCESS_DENIED);
     }
 
     const user = requireSession(sessionId);
-    if (!user) return Utility.error(ERROR.SESSION_EXPIRED);
+    if (!user) return Utility.error(ERROR.ACCESS_DENIED);
 
     switch (action) {
       case "logout":
@@ -336,6 +346,15 @@ const API = (() => {
 
       case "userManagementContext":
         return UserManagement.list(user);
+
+      case "riderInsights":
+        return Utility.success(SUCCESS.FETCHED, RiderInsights.context(user, args[0] || {}));
+
+      case "passwordResetRequests":
+        return Utility.success(SUCCESS.FETCHED, PasswordReset.list(user, args[0] || {}));
+
+      case "passwordResetAdminComplete":
+        return PasswordReset.complete(user, args[0], args[1]);
       
       case "managedUserAvailability":
        return UserManagement.availability(user, args[0] || {});
@@ -351,6 +370,21 @@ const API = (() => {
 
       case "bankingUploadSlip":
         return Banking.uploadSlip(user, args[0] || {});
+
+      case "bankingCcrSubmit":
+        return Banking.submitCcr(user, args[0] || {});
+
+      case "bankingCcrUpdate":
+        return Banking.updateCcr(user, args[0] || {});
+
+      case "bankingCcrSearch":
+        return Banking.searchCcr(user, args[0] || {});
+
+      case "bankingCcrResendEmail":
+        return Banking.resendCcrEmail(user, args[0]);
+
+      case "bankingDashboard":
+        return Banking.dashboard(user, args[0] || {});
 
       case "bankingPreflight":
         return Banking.preflight(user, args[0] || {});
@@ -395,13 +429,13 @@ const API = (() => {
         return Attendance.submit(user, args[0] || {});
 
       case "attendanceQueue":
-        return Utility.success(SUCCESS.FETCHED, Attendance.queue(user));
+        return Utility.success(SUCCESS.FETCHED, Attendance.queue(user, args[0] || {}));
 
       case "attendanceApprovedKm":
         return Utility.success(SUCCESS.FETCHED, Attendance.approvedKm(user));
 
       case "attendanceAction":
-        return Attendance.act(user, args[0], args[1], args[2]);
+        return Attendance.act(user, args[0], args[1], args[2], args[3] || {});
 
       case "attendanceEditKm":
         return Attendance.editKm(user, args[0], args[1], args[2], args[3]);
@@ -437,6 +471,12 @@ const API = (() => {
 
       case "rosterList":
         return Utility.success(SUCCESS.FETCHED, Roster.list(user, args[0], args[1]));
+
+      case "rosterAudit":
+        return Utility.success(SUCCESS.FETCHED, Roster.auditLog(user, args[0] || {}));
+
+      case "rosterAuditSearch":
+        return Utility.success(SUCCESS.FETCHED, Roster.auditSearch(user, args[0] || {}));
 
       case "uploadRoster":
         return Roster.upload(user, args[0] || []);
@@ -474,8 +514,17 @@ const API = (() => {
         return Submission.bulkCreate(user.USERNAME, rows, location);
       }
 
-      case "mySubmissions":
-        return Utility.success(SUCCESS.FETCHED, Submission.mySubmissions(user.USERNAME).map(submissionDto));
+      case "mySubmissions": {
+        const records = normaliseRole(user.ROLE) === "RIDER"
+          ? Submission.mySubmissions(user.USERNAME)
+          : Database.submissions.byScope(user).filter(record => {
+              const username = Utility.safeString(user.USERNAME).toLowerCase();
+              return Utility.safeString(record.data.USERNAME).toLowerCase() === username ||
+                Utility.safeString(record.data.REVIEWED_BY).toLowerCase() === username ||
+                Utility.safeString(record.data.ASSIGNED_TO).toLowerCase() === username;
+            }).sort((left, right) => right.row - left.row);
+        return Utility.success(SUCCESS.FETCHED, records.map(submissionDto));
+      }
 
       case "getSubmission": {
         let record = Submission.get(args[0]);
@@ -485,13 +534,16 @@ const API = (() => {
         Submission.releaseExpiredReviewLocks([record]);
         record = Submission.get(args[0]);
 
-        if (isReviewLockedByAnotherUser(user, record))
-          return Utility.error("This submission is currently being reviewed by another user.");
         return Utility.success(SUCCESS.FETCHED, submissionDto(record));
       }
 
       case "dashboardCounts":
         return dashboardCounts(user);
+
+      case "riderLeaderboard": {
+        if (normaliseRole(user.ROLE) !== "RIDER") return Utility.error(ERROR.ACCESS_DENIED);
+        return Utility.success(SUCCESS.FETCHED, Dashboard.riderLeaderboard(user));
+      }
 
       case "pendingRequests": {
         const error = accessError(user, isManager);
