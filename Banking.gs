@@ -9,6 +9,7 @@ const Banking = (() => {
   const SLIP_ROOT_FOLDER_ID = "1gITut4H5S6Ul2MWmKM69PPV72pLa2-AL";
   const MAIL_SHEET_NAME = "Mail ID";
   const AUDIT_SHEET_NAME = "Banking Audit Log";
+  const CCR_SHEET_NAME = "CCR Register";
   const MAX_ROWS = 1000;
   const MAX_BULK_EXPORT_ROWS = 10000;
   const MAX_SLIP_BYTES = 10 * 1024 * 1024;
@@ -17,7 +18,7 @@ const Banking = (() => {
   const BATCH_RECEIPT_PREFIX = "BANKING_BATCH_RECEIPT_";
   const SLIP_RECEIPT_TTL_MS = 2 * 60 * 60 * 1000;
   const BATCH_RECEIPT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-  const MAIL_SCOPE = "https://www.googleapis.com/auth/script.send_mail";
+  const MAIL_SCOPE = "https://mail.google.com/";
   const MONTH_NAMES = Object.freeze(["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"]);
   let cachedTimeZone = "";
 
@@ -88,6 +89,26 @@ const Banking = (() => {
     "Selected Warehouse", "Selected LM Hub", "Source Sheet", "Source Row",
     "Destination Sheet", "Destination Row", "Previous Record JSON",
     "Replacement Record JSON"
+  ]);
+
+  const CCR_HEADERS = Object.freeze([
+    "CCR ID", "Cash Collection Date", "Zone", "Warehouse", "LM Hub",
+    "Coin Rs1 Qty", "Coin Rs2 Qty", "Coin Rs5 Qty", "Coin Rs10 Qty",
+    "Note Rs10 Qty", "Note Rs20 Qty", "Note Rs50 Qty", "Note Rs100 Qty",
+    "Note Rs200 Qty", "Note Rs500 Qty", "Cash Total", "UPI Amount",
+    "Total Collected", "Submitted By", "Submitted Email", "Submitted At",
+    "CDR Batch ID", "Cash Deposition Date", "Status", "Mail Thread ID",
+    "CCR Mail Sent", "CDR Mail Sent", "Mail Count", "Last Mail Sent At",
+    "Last Updated By", "Last Updated Email", "Last Updated At", "CCR Edit Count",
+    "Last Change Remarks", "CDR Remarks"
+  ]);
+
+  const DENOMINATIONS = Object.freeze([
+    ["coin1", "Coin Rs1 Qty", 1], ["coin2", "Coin Rs2 Qty", 2],
+    ["coin5", "Coin Rs5 Qty", 5], ["coin10", "Coin Rs10 Qty", 10],
+    ["note10", "Note Rs10 Qty", 10], ["note20", "Note Rs20 Qty", 20],
+    ["note50", "Note Rs50 Qty", 50], ["note100", "Note Rs100 Qty", 100],
+    ["note200", "Note Rs200 Qty", 200], ["note500", "Note Rs500 Qty", 500]
   ]);
 
   function text(value) {
@@ -188,10 +209,18 @@ const Banking = (() => {
 
   function validateBusinessDate(value) {
     const raw = text(value);
-    const parsed = parseIsoDate(raw, "Banking date");
+    const parsed = parseIsoDate(raw, "Cash Deposition date");
     const today = Utilities.formatDate(new Date(), timeZone(), "yyyy-MM-dd");
-    if (raw >= today)
-      throw new Error("Select yesterday or an earlier business date. Today's banking date is not allowed.");
+    if (raw > today)
+      throw new Error("Cash Deposition date cannot be in the future.");
+    return parsed;
+  }
+
+  function validateCollectionDate(value) {
+    const raw = text(value);
+    const parsed = parseIsoDate(raw, "Cash Collection date");
+    const today = Utilities.formatDate(new Date(), timeZone(), "yyyy-MM-dd");
+    if (raw > today) throw new Error("Cash Collection date cannot be in the future.");
     return parsed;
   }
 
@@ -288,6 +317,59 @@ const Banking = (() => {
     return prepared;
   }
 
+  function moneyCellCents_(value, fieldName, rowNumber) {
+    if (value === null || value === undefined || text(value) === "") return 0;
+    let normalized = typeof value === "number" ? value : text(value)
+      .replace(/,/g, "").replace(/^₹\s*/, "").replace(/^RS\.?\s*/i, "");
+    const amount = Number(normalized);
+    if (!isFinite(amount) || amount < 0) {
+      throw new Error("Row " + rowNumber + ": " + fieldName + " must be zero or a positive number.");
+    }
+    return Math.round(amount * 100);
+  }
+
+  function cdrAmountSummary_(rows) {
+    const codIndex = TEMPLATE_HEADERS.indexOf("COD Value");
+    const upiIndex = TEMPLATE_HEADERS.indexOf("UPI Value");
+    let codCents = 0;
+    let upiCents = 0;
+    (rows || []).forEach((row, index) => {
+      codCents += moneyCellCents_(row[codIndex], "COD Value", index + 2);
+      upiCents += moneyCellCents_(row[upiIndex], "UPI Value", index + 2);
+    });
+    return {
+      codTotal: Number((codCents / 100).toFixed(2)),
+      upiTotal: Number((upiCents / 100).toFixed(2)),
+      fileTotal: Number(((codCents + upiCents) / 100).toFixed(2)),
+      fileTotalCents: codCents + upiCents
+    };
+  }
+
+  function requireCdrAmountMatch_(ccr, rows) {
+    const summary = cdrAmountSummary_(rows);
+    const ccrCents = Math.round((Number(ccr["Total Collected"]) || 0) * 100);
+    const differenceCents = summary.fileTotalCents - ccrCents;
+    const result = {
+      ccrTotal: Number((ccrCents / 100).toFixed(2)),
+      codTotal: summary.codTotal,
+      upiTotal: summary.upiTotal,
+      fileTotal: summary.fileTotal,
+      difference: Number((differenceCents / 100).toFixed(2)),
+      matches: Math.abs(differenceCents) <= 100,
+      tolerance: 1
+    };
+    if (!result.matches) {
+      throw new Error(
+        "CDR amount mismatch. Selected CCR 'Total Collected' is Rs " + result.ccrTotal.toFixed(2) +
+        ". In the uploaded CDR file, the sum of column 'COD Value' is Rs " + result.codTotal.toFixed(2) +
+        " and the sum of column 'UPI Value' is Rs " + result.upiTotal.toFixed(2) +
+        ", giving COD Value + UPI Value = Rs " + result.fileTotal.toFixed(2) +
+        " (difference Rs " + result.difference.toFixed(2) + "). A rounding difference up to plus or minus Rs 1.00 is accepted. Correct those two columns or edit the open CCR before uploading."
+      );
+    }
+    return result;
+  }
+
   function normalizedAwb(value) {
     return text(value).toUpperCase().replace(/\s+/g, " ");
   }
@@ -310,9 +392,280 @@ const Banking = (() => {
       registeredEmail: text(userValue(user, "REGISTERED_EMAIL")),
       maxRows: MAX_ROWS,
       headers: TEMPLATE_HEADERS.slice(),
-      dateHeaders: DATE_HEADERS.slice()
+      dateHeaders: DATE_HEADERS.slice(),
+      ccrEntries: ccrList_(user, {}).slice(0, 200).map(ccrDto_),
+      dashboard: dashboard_(user, {})
     });
   }
+
+  function html(value) {
+    return text(value).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function ccrSheet_(spreadsheet) {
+    spreadsheet = spreadsheet || SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = spreadsheet.getSheetByName(CCR_SHEET_NAME);
+    if (!sheet) sheet = spreadsheet.insertSheet(CCR_SHEET_NAME);
+    if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
+      sheet.getRange(1, 1, 1, CCR_HEADERS.length).setValues([CCR_HEADERS])
+        .setBackground("#0B4D87").setFontColor("#FFFFFF").setFontWeight("bold").setWrap(true);
+      sheet.setFrozenRows(1);
+      try { sheet.getRange(1, 1, 1, CCR_HEADERS.length).createFilter(); } catch (error) {}
+    }
+    const existingColumnCount = sheet.getLastColumn();
+    const existing = sheet.getRange(1, 1, 1, Math.max(existingColumnCount, CCR_HEADERS.length))
+      .getDisplayValues()[0];
+    const existingHeaderCount = Math.min(existingColumnCount, CCR_HEADERS.length);
+    if (!CCR_HEADERS.slice(0, existingHeaderCount).every((header, index) => same(header, existing[index])))
+      throw new Error("The '" + CCR_SHEET_NAME + "' headers do not match this portal version.");
+    if (existingColumnCount < CCR_HEADERS.length) {
+      const missing = CCR_HEADERS.slice(existingColumnCount);
+      sheet.getRange(1, existingColumnCount + 1, 1, missing.length).setValues([missing])
+        .setBackground("#0B4D87").setFontColor("#FFFFFF").setFontWeight("bold").setWrap(true);
+    }
+    return sheet;
+  }
+
+  function ccrRows_(spreadsheet) {
+    const sheet = ccrSheet_(spreadsheet);
+    if (sheet.getLastRow() < 2) return [];
+    return sheet.getRange(2, 1, sheet.getLastRow() - 1, CCR_HEADERS.length).getValues().map((values, index) => {
+      const record = { __row: index + 2 };
+      CCR_HEADERS.forEach((header, column) => { record[header] = values[column]; });
+      return record;
+    });
+  }
+
+  function ccrIso_(value) {
+    if (value instanceof Date && !isNaN(value.getTime())) return Utilities.formatDate(value, timeZone(), "yyyy-MM-dd");
+    const parsed = parseDisplayDate(value);
+    return parsed || text(value);
+  }
+
+  function ccrDto_(record) {
+    const denominations = {};
+    DENOMINATIONS.forEach(item => { denominations[item[0]] = Number(record[item[1]]) || 0; });
+    denominations.upiAmount = Number(record["UPI Amount"]) || 0;
+    return {
+      ccrId: text(record["CCR ID"]),
+      collectionDate: ccrIso_(record["Cash Collection Date"]),
+      collectionDateDisplay: record["Cash Collection Date"] instanceof Date ? displayDate(record["Cash Collection Date"], "dd-MM-yyyy") : text(record["Cash Collection Date"]),
+      depositionDate: ccrIso_(record["Cash Deposition Date"]),
+      zone: text(record.Zone), warehouse: text(record.Warehouse), lmHub: text(record["LM Hub"]),
+      cashTotal: Number(record["Cash Total"]) || 0,
+      upiAmount: Number(record["UPI Amount"]) || 0,
+      totalCollected: Number(record["Total Collected"]) || 0,
+      denominations,
+      submittedBy: text(record["Submitted By"]), submittedEmail: text(record["Submitted Email"]),
+      submittedAt: record["Submitted At"] instanceof Date ? displayDate(record["Submitted At"], "dd-MM-yyyy HH:mm:ss") : text(record["Submitted At"]),
+      cdrBatchId: text(record["CDR Batch ID"]), status: text(record.Status),
+      ccrMailSent: same(record["CCR Mail Sent"], "Yes"), cdrMailSent: same(record["CDR Mail Sent"], "Yes"),
+      mailSent: text(record["CDR Batch ID"]) ? same(record["CDR Mail Sent"], "Yes") : same(record["CCR Mail Sent"], "Yes"), mailCount: Number(record["Mail Count"]) || 0,
+      lastMailSentAt: record["Last Mail Sent At"] instanceof Date ? displayDate(record["Last Mail Sent At"], "dd-MM-yyyy HH:mm:ss") : text(record["Last Mail Sent At"]),
+      mailThreadAvailable: !!text(record["Mail Thread ID"]),
+      editable: !text(record["CDR Batch ID"]),
+      editCount: Number(record["CCR Edit Count"]) || 0,
+      lastUpdatedBy: text(record["Last Updated By"]),
+      lastUpdatedAt: record["Last Updated At"] instanceof Date ? displayDate(record["Last Updated At"], "dd-MM-yyyy HH:mm:ss") : text(record["Last Updated At"]),
+      lastChangeRemarks: text(record["Last Change Remarks"]),
+      cdrRemarks: text(record["CDR Remarks"])
+    };
+  }
+
+  function updateCcr_(sheet, row, fields) {
+    const current = sheet.getRange(row, 1, 1, CCR_HEADERS.length).getValues()[0];
+    Object.keys(fields || {}).forEach(header => {
+      const index = CCR_HEADERS.indexOf(header);
+      if (index >= 0) current[index] = fields[header];
+    });
+    sheet.getRange(row, 1, 1, CCR_HEADERS.length).setValues([current]);
+  }
+
+  function ccrList_(user, filters, spreadsheet) {
+    const allowed = allowedLocationMap(user);
+    filters = filters || {};
+    return ccrRows_(spreadsheet).filter(record => recordAllowed(allowed, record)).filter(record => {
+      const date = ccrIso_(record["Cash Collection Date"]);
+      if (text(filters.ccrId) && text(record["CCR ID"]).toUpperCase().indexOf(text(filters.ccrId).toUpperCase()) === -1) return false;
+      if (text(filters.startDate) && date < text(filters.startDate)) return false;
+      if (text(filters.endDate) && date > text(filters.endDate)) return false;
+      if (text(filters.status) && !same(record.Status, filters.status)) return false;
+      if (Array.isArray(filters.zones) && filters.zones.length && !filters.zones.some(value => same(value, record.Zone))) return false;
+      if (Array.isArray(filters.warehouses) && filters.warehouses.length && !filters.warehouses.some(value => same(value, record.Warehouse))) return false;
+      if (Array.isArray(filters.lmHubs) && filters.lmHubs.length && !filters.lmHubs.some(value => same(value, record["LM Hub"]))) return false;
+      if (text(filters.submittedBy) && text(record["Submitted By"]).toLowerCase().indexOf(text(filters.submittedBy).toLowerCase()) === -1) return false;
+      return true;
+    }).sort((left, right) => ccrIso_(right["Cash Collection Date"]).localeCompare(ccrIso_(left["Cash Collection Date"])) || right.__row - left.__row);
+  }
+
+  function cashQuantities_(input) {
+    const quantities = {};
+    let cashTotal = 0;
+    DENOMINATIONS.forEach(item => {
+      const quantity = Number(input && input[item[0]] || 0);
+      if (!Number.isInteger(quantity) || quantity < 0 || quantity > 1000000)
+        throw new Error(item[1] + " must be a whole number of pieces.");
+      quantities[item[1]] = quantity;
+      cashTotal += quantity * item[2];
+    });
+    const upiAmount = Number(input && input.upiAmount || 0);
+    if (!isFinite(upiAmount) || upiAmount < 0) throw new Error("UPI Amount must be zero or a positive number.");
+    if (cashTotal + upiAmount <= 0) throw new Error("Enter at least one cash denomination or a UPI amount.");
+    return { quantities, cashTotal, upiAmount: Number(upiAmount.toFixed(2)), total: Number((cashTotal + upiAmount).toFixed(2)) };
+  }
+
+  function ccrSubject_(location, collectionDate) {
+    return "Cash Collection / Deposition || " + location.lmHub + " || " + displayDate(collectionDate, "dd-MM-yyyy");
+  }
+
+  function sendCcrMail_(spreadsheet, user, location, collectionDate, ccrId, amounts) {
+    const config = mailConfiguration(spreadsheet, location.zone);
+    if (!config.to.length) throw new Error("Static To recipients are missing in the Mail ID sheet.");
+    const uploaderEmail = text(userValue(user, "REGISTERED_EMAIL"));
+    if (!REGEX.EMAIL.test(uploaderEmail)) throw new Error("The logged-in user does not have a valid Registered Email in User Master.");
+    const lines = DENOMINATIONS.map(item => item[1].replace(" Qty", "") + ": " + amounts.quantities[item[1]]).join("\n");
+    const body = ["Cash Collection Report (CCR) created.", "CCR ID: " + ccrId, "Cash Collection date: " + displayDate(collectionDate, "dd-MM-yyyy"), "Location: " + location.zone + " / " + location.warehouse + " / " + location.lmHub, lines, "Cash total: Rs " + amounts.cashTotal.toFixed(2), "UPI amount: Rs " + amounts.upiAmount.toFixed(2), "Total collected: Rs " + amounts.total.toFixed(2), "Submitted by: " + text(userValue(user, "RIDER_NAME") || userValue(user, "USERNAME"))].join("\n");
+    const htmlBody = "<p><b>Cash Collection Report (CCR) created.</b></p><table cellpadding='6' cellspacing='0' border='1' style='border-collapse:collapse;border-color:#dbe5f1'><tr><td>CCR ID</td><td>" + html(ccrId) + "</td></tr><tr><td>Collection date</td><td>" + html(displayDate(collectionDate,"dd-MM-yyyy")) + "</td></tr><tr><td>Location</td><td>" + html(location.zone+" / "+location.warehouse+" / "+location.lmHub) + "</td></tr><tr><td>Cash total</td><td>Rs " + amounts.cashTotal.toFixed(2) + "</td></tr><tr><td>UPI amount</td><td>Rs " + amounts.upiAmount.toFixed(2) + "</td></tr><tr><td><b>Total collected</b></td><td><b>Rs " + amounts.total.toFixed(2) + "</b></td></tr></table><p>The Cash Deposition Report (CDR) will be added to this same conversation after deposit.</p>";
+    const options = { htmlBody, name:"TrueMeds HyperLocal Logistics Portal", replyTo:uploaderEmail };
+    if (config.cc.length) options.cc = config.cc.join(",");
+    const message = GmailApp.createDraft(config.to.join(","), ccrSubject_(location, collectionDate), body, options).send();
+    return message.getThread().getId();
+  }
+
+  function sendCurrentCcrMail_(spreadsheet, user, record, amounts, isRevision) {
+    const location = { zone:text(record.Zone), warehouse:text(record.Warehouse), lmHub:text(record["LM Hub"]) };
+    const collectionDate = validateCollectionDate(ccrIso_(record["Cash Collection Date"]));
+    const threadId = text(record["Mail Thread ID"]);
+    const thread = threadId ? GmailApp.getThreadById(threadId) : null;
+    if (!thread) return sendCcrMail_(spreadsheet, user, location, collectionDate, text(record["CCR ID"]), amounts);
+    const actor = text(userValue(user,"RIDER_NAME") || userValue(user,"USERNAME"));
+    const changeRemarks=text(record["Last Change Remarks"]);
+    const body = [isRevision ? "Cash Collection Report (CCR) updated." : "Cash Collection Report (CCR) confirmation.", "CCR ID: " + text(record["CCR ID"]), "Cash Collection date: " + displayDate(collectionDate,"dd-MM-yyyy"), "Location: " + location.zone + " / " + location.warehouse + " / " + location.lmHub, "Cash total: Rs " + amounts.cashTotal.toFixed(2), "UPI amount: Rs " + amounts.upiAmount.toFixed(2), "Revised total collected: Rs " + amounts.total.toFixed(2), "Updated by: " + actor, changeRemarks?"Change reason: "+changeRemarks:""].filter(Boolean).join("\n");
+    const htmlBody = "<p><b>" + (isRevision ? "Cash Collection Report (CCR) updated." : "Cash Collection Report (CCR) confirmation.") + "</b></p><table cellpadding='6' cellspacing='0' border='1' style='border-collapse:collapse;border-color:#dbe5f1'><tr><td>CCR ID</td><td>" + html(record["CCR ID"]) + "</td></tr><tr><td>Collection date</td><td>" + html(displayDate(collectionDate,"dd-MM-yyyy")) + "</td></tr><tr><td>Location</td><td>" + html(location.zone+" / "+location.warehouse+" / "+location.lmHub) + "</td></tr><tr><td>Cash total</td><td>Rs " + amounts.cashTotal.toFixed(2) + "</td></tr><tr><td>UPI amount</td><td>Rs " + amounts.upiAmount.toFixed(2) + "</td></tr><tr><td><b>Revised total collected</b></td><td><b>Rs " + amounts.total.toFixed(2) + "</b></td></tr><tr><td>Updated by</td><td>" + html(actor) + "</td></tr>"+(changeRemarks?"<tr><td>Change reason</td><td>"+html(changeRemarks)+"</td></tr>":"")+"</table><p>The linked CDR must use this revised CCR value.</p>";
+    thread.replyAll(body, { htmlBody, replyTo:text(userValue(user,"REGISTERED_EMAIL")) });
+    return thread.getId();
+  }
+
+  function amountsFromCcr_(record) {
+    const amounts = { quantities:{}, cashTotal:Number(record["Cash Total"])||0, upiAmount:Number(record["UPI Amount"])||0, total:Number(record["Total Collected"])||0 };
+    DENOMINATIONS.forEach(item => { amounts.quantities[item[1]] = Number(record[item[1]]) || 0; });
+    return amounts;
+  }
+
+  function submitCcr(user, payload) {
+    requireAccess(user); payload = payload || {};
+    let location, collectionDate, amounts;
+    try {
+      location = locationForUser(user, payload.location || {});
+      if (!location) throw new Error("Choose a permitted Zone, Warehouse and LM Hub.");
+      collectionDate = validateCollectionDate(payload.collectionDate);
+      amounts = cashQuantities_(payload.denominations || {});
+    } catch (error) { return Utility.error(error.message); }
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) return Utility.error("Another CCR is being saved. Please retry shortly.");
+    try {
+      const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID), sheet = ccrSheet_(spreadsheet);
+      const existing = ccrRows_(spreadsheet).find(record => ccrIso_(record["Cash Collection Date"]) === text(payload.collectionDate) && same(record.Zone,location.zone) && same(record.Warehouse,location.warehouse) && same(record["LM Hub"],location.lmHub));
+      if (existing) return Utility.success("A CCR already exists for this LM Hub and collection date.", ccrDto_(existing));
+      const ccrId = "CCR-" + Utilities.formatDate(new Date(), timeZone(), "yyyyMMdd-HHmmss") + "-" + Utilities.getUuid().slice(0,6).toUpperCase();
+      const rowObject = { "CCR ID":ccrId, "Cash Collection Date":collectionDate, Zone:location.zone, Warehouse:location.warehouse, "LM Hub":location.lmHub, "Cash Total":amounts.cashTotal, "UPI Amount":amounts.upiAmount, "Total Collected":amounts.total, "Submitted By":text(userValue(user,"RIDER_NAME")||userValue(user,"USERNAME")), "Submitted Email":text(userValue(user,"REGISTERED_EMAIL")), "Submitted At":new Date(), Status:"CCR Submitted", "CCR Mail Sent":"No", "CDR Mail Sent":"No", "Mail Count":0 };
+      DENOMINATIONS.forEach(item => { rowObject[item[1]] = amounts.quantities[item[1]]; });
+      const values = CCR_HEADERS.map(header => rowObject[header] === undefined ? "" : rowObject[header]);
+      sheet.appendRow(values); const row = sheet.getLastRow();
+      sheet.getRange(row,2).setNumberFormat("dd-MM-yyyy");sheet.getRange(row,21).setNumberFormat("dd-MM-yyyy HH:mm:ss");
+      const warnings=[];
+      try { const threadId=sendCcrMail_(spreadsheet,user,location,collectionDate,ccrId,amounts);updateCcr_(sheet,row,{"Mail Thread ID":threadId,"CCR Mail Sent":"Yes","Mail Count":1,"Last Mail Sent At":new Date()}); }
+      catch(error){warnings.push("CCR was saved, but email was not sent: "+friendlyMailError(error));}
+      const saved=ccrRows_(spreadsheet).find(record=>same(record["CCR ID"],ccrId));const data=ccrDto_(saved);data.warnings=warnings;return Utility.success(warnings.length?"CCR saved; email needs attention.":"CCR saved and email sent successfully.",data);
+    } finally { lock.releaseLock(); }
+  }
+
+  function updateCcr(user, payload) {
+    requireAccess(user); payload = payload || {};
+    const ccrId = text(payload.ccrId);
+    if (!ccrId) return Utility.error("Select an open CCR to edit.");
+    const changeRemarks = text(payload.remarks);
+    if (changeRemarks.length < 5) return Utility.error("Enter a clear reason for changing this CCR (minimum 5 characters).");
+    let amounts;
+    try { amounts = cashQuantities_(payload.denominations || {}); }
+    catch (error) { return Utility.error(error.message); }
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(15000)) return Utility.error("Another CCR change is being saved. Please retry shortly.");
+    try {
+      const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID), sheet = ccrSheet_(spreadsheet), allowed = allowedLocationMap(user);
+      const record = ccrRows_(spreadsheet).find(item => same(item["CCR ID"], ccrId));
+      if (!record || !recordAllowed(allowed, record)) return Utility.error("CCR not found in your permitted scope.");
+      if (text(record["CDR Batch ID"])) return Utility.error("CCR editing is locked because CDR batch " + text(record["CDR Batch ID"]) + " is already completed.");
+      const updates = { "Cash Total":amounts.cashTotal, "UPI Amount":amounts.upiAmount, "Total Collected":amounts.total, "Status":"CCR Updated", "CCR Mail Sent":"No", "Last Updated By":text(userValue(user,"RIDER_NAME")||userValue(user,"USERNAME")), "Last Updated Email":text(userValue(user,"REGISTERED_EMAIL")), "Last Updated At":new Date(), "CCR Edit Count":Number(record["CCR Edit Count"]||0)+1, "Last Change Remarks":changeRemarks };
+      DENOMINATIONS.forEach(item => { updates[item[1]] = amounts.quantities[item[1]]; });
+      updateCcr_(sheet, record.__row, updates);
+      let refreshed = ccrRows_(spreadsheet).find(item => same(item["CCR ID"], ccrId));
+      const warnings = [];
+      try {
+        const threadId = sendCurrentCcrMail_(spreadsheet, user, refreshed, amounts, true);
+        updateCcr_(sheet, refreshed.__row, { "Mail Thread ID":threadId, "CCR Mail Sent":"Yes", "Mail Count":Number(refreshed["Mail Count"]||0)+1, "Last Mail Sent At":new Date() });
+      } catch (error) { warnings.push("CCR changes were saved, but the revised email was not sent: " + friendlyMailError(error)); }
+      refreshed = ccrRows_(spreadsheet).find(item => same(item["CCR ID"], ccrId));
+      const data = ccrDto_(refreshed); data.warnings = warnings;
+      return Utility.success(warnings.length ? "CCR updated; email needs attention." : "CCR updated and revised email sent successfully.", data);
+    } finally { lock.releaseLock(); }
+  }
+
+  function resendCcrEmail(user, ccrId) {
+    requireAccess(user);const spreadsheet=SpreadsheetApp.openById(SPREADSHEET_ID),sheet=ccrSheet_(spreadsheet),allowed=allowedLocationMap(user),record=ccrRows_(spreadsheet).find(item=>same(item["CCR ID"],ccrId));
+    if(!record||!recordAllowed(allowed,record))return Utility.error("CCR not found in your permitted scope.");
+    const amounts=amountsFromCcr_(record);
+    try{const threadId=sendCurrentCcrMail_(spreadsheet,user,record,amounts,Number(record["CCR Edit Count"]||0)>0);updateCcr_(sheet,record.__row,{"Mail Thread ID":threadId,"CCR Mail Sent":"Yes","Mail Count":Number(record["Mail Count"]||0)+1,"Last Mail Sent At":new Date()});return Utility.success("CCR email sent successfully.",ccrDto_(ccrRows_(spreadsheet).find(item=>same(item["CCR ID"],ccrId))));}catch(error){return Utility.error("Email was not sent: "+friendlyMailError(error));}
+  }
+
+  function dashboard_(user, filters, spreadsheet) {
+    const rows=ccrList_(user,filters||{},spreadsheet),byHub={},trend={};
+    rows.forEach(record=>{
+      const hub=text(record["LM Hub"]),date=ccrIso_(record["Cash Collection Date"]),done=!!text(record["CDR Batch ID"]),total=Number(record["Total Collected"]||0);
+      if(!byHub[hub])byHub[hub]={ccrId:"",lmHub:hub,zone:text(record.Zone),warehouse:text(record.Warehouse),collectionDate:"",status:"CDR Pending",totalCollected:0,totalDeposited:0,submittedBy:"",cdrBatchId:"",mailSent:false,mailCount:0,ccrCount:0,cdrCount:0};
+      const aggregate=byHub[hub];
+      aggregate.totalCollected+=total;aggregate.ccrCount++;
+      if(done){aggregate.totalDeposited+=total;aggregate.cdrCount++;}
+      if(!aggregate.collectionDate||date>aggregate.collectionDate){
+        aggregate.ccrId=text(record["CCR ID"]);aggregate.zone=text(record.Zone);aggregate.warehouse=text(record.Warehouse);aggregate.collectionDate=date;aggregate.status=done?'Done':'CDR Pending';aggregate.submittedBy=text(record["Submitted By"]);aggregate.cdrBatchId=text(record["CDR Batch ID"]);aggregate.mailSent=done?same(record["CDR Mail Sent"],'Yes'):same(record["CCR Mail Sent"],'Yes');aggregate.mailCount=Number(record["Mail Count"]||0);
+      }
+      if(!trend[date])trend[date]={date,totalCollected:0,totalDeposited:0,ccrCount:0,cdrCount:0};
+      trend[date].totalCollected+=total;trend[date].ccrCount++;
+      if(done){trend[date].totalDeposited+=total;trend[date].cdrCount++;}
+    });
+    const completed=rows.filter(record=>text(record["CDR Batch ID"])).length,totalCollected=rows.reduce((sum,record)=>sum+(Number(record["Total Collected"])||0),0),totalDeposited=rows.filter(record=>text(record["CDR Batch ID"])).reduce((sum,record)=>sum+(Number(record["Total Collected"])||0),0);
+    const hubRows=Object.keys(byHub).map(key=>{const item=byHub[key];item.totalCollected=Number(item.totalCollected.toFixed(2));item.totalDeposited=Number(item.totalDeposited.toFixed(2));return item;}).sort((a,b)=>a.lmHub.localeCompare(b.lmHub));
+    return{ccrCount:rows.length,cdrCompleted:completed,cdrPending:rows.length-completed,totalCollected:Number(totalCollected.toFixed(2)),totalDeposited:Number(totalDeposited.toFixed(2)),hubRows,trend:Object.keys(trend).sort().map(date=>trend[date]).slice(-31)};
+  }
+
+  function dashboard(user,filters){requireAccess(user);return Utility.success(SUCCESS.FETCHED,dashboard_(user,filters||{}));}
+
+  function searchCcr(user, filters) {
+    requireAccess(user); filters = filters || {};
+    try {
+      if (text(filters.startDate)) validateCollectionDate(filters.startDate);
+      if (text(filters.endDate)) validateCollectionDate(filters.endDate);
+      if (text(filters.startDate) && text(filters.endDate) && text(filters.startDate) > text(filters.endDate))
+        throw new Error("CCR From date cannot be later than To date.");
+      const rows = ccrList_(user, {
+        ccrId: text(filters.ccrId),
+        startDate: text(filters.startDate),
+        endDate: text(filters.endDate)
+      }).slice(0, 500).map(ccrDto_);
+      return Utility.success(rows.length ? rows.length + " CCR record(s) found." : "No CCR records matched this search.", rows);
+    } catch (error) { return Utility.error(error.message); }
+  }
+
+  function resolveCcrForCdr_(user,ccrId,location,depositionDate,spreadsheet){const allowed=allowedLocationMap(user),record=ccrRows_(spreadsheet).find(item=>same(item["CCR ID"],ccrId));if(!record||!recordAllowed(allowed,record))throw new Error("Choose a CCR from your permitted scope before creating a CDR.");if(text(record["CDR Batch ID"]))throw new Error("This CCR is already closed by CDR batch "+text(record["CDR Batch ID"])+".");if(!same(record.Zone,location.zone)||!same(record.Warehouse,location.warehouse)||!same(record["LM Hub"],location.lmHub))throw new Error("The selected CDR location must match the CCR location.");if(text(depositionDate)<ccrIso_(record["Cash Collection Date"]))throw new Error("Cash Deposition date cannot be earlier than Cash Collection date.");return record;}
+
+  function payloadCcrIds_(payload){const values=Array.isArray(payload&&payload.ccrIds)?payload.ccrIds:[payload&&payload.ccrId];const found={};return values.map(text).filter(id=>id&&!found[key(id)]&&(found[key(id)]=true));}
+  function resolveCcrsForCdr_(user,payload,location,depositionDate,spreadsheet){const ids=payloadCcrIds_(payload);if(!ids.length)throw new Error("Select at least one open CCR before creating a CDR.");const records=ids.map(id=>resolveCcrForCdr_(user,id,location,depositionDate,spreadsheet));return records.sort((a,b)=>ccrIso_(a["Cash Collection Date"]).localeCompare(ccrIso_(b["Cash Collection Date"])));}
+  function combinedCcr_(records){const first=records[0],ids=records.map(record=>text(record["CCR ID"])),dates=records.map(record=>ccrIso_(record["Cash Collection Date"]));return Object.assign({},first,{"CCR ID":ids.join(", "),"Total Collected":records.reduce((sum,record)=>sum+(Number(record["Total Collected"])||0),0),"Mail Thread ID":text((records.find(record=>text(record["Mail Thread ID"]))||first)["Mail Thread ID"]),__records:records,__ccrIds:ids,__collectionDates:dates});}
+
+  function sendCdrMail_(spreadsheet,user,location,depositionDate,rowCount,slip,batchId,exportRows,ccr,remarks){const uploaderEmail=text(userValue(user,"REGISTERED_EMAIL")),ids=ccr.__ccrIds||[text(ccr["CCR ID"])],dates=ccr.__collectionDates||[ccrIso_(ccr["Cash Collection Date"])],csvAttachment=bankingCsvAttachment(exportRows,batchId,location,depositionDate),body=[recordsLabel_(ids.length,"Cash Deposition Report (CDR) completed.","Merged-days Cash Deposition Report (CDR) completed."),"Linked CCR IDs: "+ids.join(", "),"Cash Collection dates: "+dates.join(", "),"CDR Batch ID: "+batchId,"Cash Deposition date: "+displayDate(depositionDate,"dd-MM-yyyy"),"Line items: "+rowCount,"Remarks: "+remarks,"Bank receipt: "+slip.fileUrl,"Uploaded by: "+text(userValue(user,"RIDER_NAME")||userValue(user,"USERNAME"))].join("\n"),htmlBody="<p><b>"+html(ids.length>1?"Merged-days Cash Deposition Report (CDR) completed.":"Cash Deposition Report (CDR) completed.")+"</b></p><table cellpadding='6' cellspacing='0' border='1' style='border-collapse:collapse;border-color:#dbe5f1'><tr><td>Linked CCR IDs</td><td>"+html(ids.join(", "))+"</td></tr><tr><td>Cash Collection dates</td><td>"+html(dates.join(", "))+"</td></tr><tr><td>CDR Batch ID</td><td>"+html(batchId)+"</td></tr><tr><td>Deposition date</td><td>"+html(displayDate(depositionDate,"dd-MM-yyyy"))+"</td></tr><tr><td>Line items</td><td>"+rowCount+"</td></tr><tr><td>Remarks</td><td>"+html(remarks)+"</td></tr></table><p><a href='"+html(slip.fileUrl)+"'>Open bank receipt</a></p>";const options={htmlBody:htmlBody,attachments:[csvAttachment],replyTo:uploaderEmail};let thread=text(ccr["Mail Thread ID"])?GmailApp.getThreadById(text(ccr["Mail Thread ID"])):null;if(thread){thread.replyAll(body,options);return thread.getId();}const config=mailConfiguration(spreadsheet,location.zone);if(!config.to.length)throw new Error("Static To recipients are missing in the Mail ID sheet.");if(config.cc.length)options.cc=config.cc.join(",");const message=GmailApp.createDraft(config.to.join(","),ccrSubject_(location,validateCollectionDate(ccrIso_(ccr["Cash Collection Date"]))),body,options).send();return message.getThread().getId();}
+
+  function recordsLabel_(count,single,multiple){return count>1?multiple:single;}
 
   function safeDriveName(value) {
     return text(value).replace(/[\\/:*?"<>|\x00-\x1F]/g, "_").slice(0, 120) || "Unspecified";
@@ -369,6 +722,7 @@ const Banking = (() => {
     let bankingDate;
     try {
       bankingDate = validateBusinessDate(payload.businessDate);
+      resolveCcrsForCdr_(user, payload, location, text(payload.businessDate), SpreadsheetApp.openById(SPREADSHEET_ID));
     } catch (error) {
       return Utility.error(error.message);
     }
@@ -381,6 +735,7 @@ const Banking = (() => {
         if (existing && Number(existing.expiresAt || 0) >= Date.now() &&
             existing.username === text(userValue(user, "USERNAME")).toLowerCase() &&
             existing.businessDate === text(payload.businessDate) &&
+            same(existing.ccrId, payloadCcrIds_(payload).join("|")) &&
             same(existing.zone, location.zone) &&
             same(existing.warehouse, location.warehouse) &&
             same(existing.lmHub, location.lmHub)) {
@@ -425,6 +780,7 @@ const Banking = (() => {
         receiptId,
         username: text(userValue(user, "USERNAME")).toLowerCase(),
         businessDate: text(payload.businessDate),
+        ccrId: payloadCcrIds_(payload).join("|"),
         zone: location.zone,
         warehouse: location.warehouse,
         lmHub: location.lmHub,
@@ -453,7 +809,7 @@ const Banking = (() => {
     }
   }
 
-  function slipReceipt(user, receiptId, businessDate, location) {
+  function slipReceipt(user, receiptId, businessDate, location, ccrId) {
     const id = text(receiptId);
     if (!id) throw new Error("Upload the mandatory banking slip before submitting banking data.");
     const property = PropertiesService.getScriptProperties().getProperty(SLIP_RECEIPT_PREFIX + id);
@@ -465,6 +821,7 @@ const Banking = (() => {
       throw new Error("The banking-slip upload receipt expired. Upload the slip again.");
     if (receipt.username !== text(userValue(user, "USERNAME")).toLowerCase() ||
         receipt.businessDate !== text(businessDate) ||
+        !same(receipt.ccrId, ccrId) ||
         !same(receipt.zone, location.zone) ||
         !same(receipt.warehouse, location.warehouse) ||
         !same(receipt.lmHub, location.lmHub))
@@ -701,6 +1058,10 @@ const Banking = (() => {
     let bankingDate;
     let rows;
     let slip;
+    let ccr;
+    let ccrs;
+    let cdrRemarks;
+    let amountMatch;
     let duplicateMode;
     try {
       location = locationForUser(user, payload.location || {});
@@ -710,7 +1071,13 @@ const Banking = (() => {
         throw new Error("Add a valid Registered Email for this user in User Master before banking upload.");
       validateHeaders(payload.headers);
       rows = validateRows(payload.rows);
-      slip = slipReceipt(user, payload.slipReceiptId, payload.businessDate, location);
+      cdrRemarks = text(payload.remarks);
+      if (cdrRemarks.length < 5) throw new Error("Enter a clear CDR remark of at least 5 characters before uploading.");
+      const spreadsheetForCcr = SpreadsheetApp.openById(SPREADSHEET_ID);
+      ccrs = resolveCcrsForCdr_(user, payload, location, text(payload.businessDate), spreadsheetForCcr);
+      ccr = combinedCcr_(ccrs);
+      amountMatch = requireCdrAmountMatch_(ccr, rows);
+      slip = slipReceipt(user, payload.slipReceiptId, payload.businessDate, location, payloadCcrIds_(payload).join("|"));
       duplicateMode = key(payload.duplicateMode);
       if (["ADD_NEW", "OVERWRITE_IN_SCOPE"].indexOf(duplicateMode) === -1)
         throw new Error("Run the AWB duplicate check and choose Add new entry or Overwrite permitted entry before uploading.");
@@ -726,6 +1093,9 @@ const Banking = (() => {
       if (duplicateInsideLock) return duplicateInsideLock;
 
       const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+      ccrs = resolveCcrsForCdr_(user, payload, location, text(payload.businessDate), spreadsheet);
+      ccr = combinedCcr_(ccrs);
+      amountMatch = requireCdrAmountMatch_(ccr, rows);
       const sheetDuplicate = existingBatchByClientRequest(spreadsheet, user, payload.clientRequestId, rows.length);
       if (sheetDuplicate) {
         if (receiptKey) storeBatchReceipt(receiptKey, sheetDuplicate);
@@ -863,6 +1233,9 @@ const Banking = (() => {
           overwrittenCount,
           auditLogCount: audits.length,
           duplicateMode,
+          amountMatch,
+          ccrIds: ccr.__ccrIds,
+          collectionDates: ccr.__collectionDates,
           warnings
         }
       );
@@ -876,10 +1249,17 @@ const Banking = (() => {
 
       try {
         const exportRows = storedRows.map(row => BULK_EXPORT_HEADERS.map(header => row[destinationHeaders.indexOf(header)]));
-        sendUploadMail(spreadsheet, user, location, bankingDate, storedRows.length, slip, batchId, exportRows);
+        const threadId=sendCdrMail_(spreadsheet, user, location, bankingDate, storedRows.length, slip, batchId, exportRows, ccr, cdrRemarks);
+        const ccrSheet=ccrSheet_(spreadsheet);
+        ccrs.forEach(record=>updateCcr_(ccrSheet,record.__row,{"CDR Batch ID":batchId,"Cash Deposition Date":bankingDate,"Status":"CDR Completed","Mail Thread ID":threadId,"CDR Mail Sent":"Yes","CDR Remarks":cdrRemarks,"Mail Count":Number(record["Mail Count"]||0)+1,"Last Mail Sent At":new Date()}));
         baseResult.data.emailSent = true;
+        baseResult.data.emailCount = Math.max.apply(null,ccrs.map(record=>Number(record["Mail Count"]||0)+1));
+        baseResult.data.ccrId = ccr.__ccrIds.join(", ");
       } catch (error) {
+        const ccrSheet=ccrSheet_(spreadsheet);
+        ccrs.forEach(record=>updateCcr_(ccrSheet,record.__row,{"CDR Batch ID":batchId,"Cash Deposition Date":bankingDate,"Status":"CDR Completed - Email Pending","CDR Mail Sent":"No","CDR Remarks":cdrRemarks}));
         baseResult.data.emailSent = false;
+        baseResult.data.ccrId = ccr.__ccrIds.join(", ");
         baseResult.data.warnings.push(
           "Data was saved, but email was not sent: " + friendlyMailError(error)
         );
@@ -1015,9 +1395,12 @@ const Banking = (() => {
       validateBusinessDate(payload.businessDate);
       validateHeaders(payload.headers);
       const rows = validateRows(payload.rows);
+      const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+      const ccrs = resolveCcrsForCdr_(user, payload, location, text(payload.businessDate), spreadsheet);
+      const ccr = combinedCcr_(ccrs);
+      const amountMatch = requireCdrAmountMatch_(ccr, rows);
       const awbIndex = TEMPLATE_HEADERS.indexOf("AWB");
       const awbs = rows.map(row => normalizedAwb(row[awbIndex]));
-      const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
       const allowed = allowedLocationMap(user);
       const matches = repositoryAwbMatches(spreadsheet, awbs);
       const duplicates = awbs.map(awb => duplicateSummary(awb, matches[awb], allowed))
@@ -1031,7 +1414,12 @@ const Banking = (() => {
           duplicates,
           inScopeDuplicateAwbs: duplicates.filter(item => item.inScopeMatches > 0).length,
           outsideScopeMatchCount: duplicates.reduce((sum, item) => sum + item.outsideScopeMatches, 0),
-          checkedAwbs: awbs.length
+          checkedAwbs: awbs.length,
+          ccr: ccrDto_(ccr),
+          ccrs: ccrs.map(ccrDto_),
+          ccrIds: ccr.__ccrIds,
+          collectionDates: ccr.__collectionDates,
+          amountMatch
         }
       );
     } catch (error) {
@@ -1190,13 +1578,19 @@ const Banking = (() => {
     try { records = matchingRecords(user, filters || {}, spreadsheet); }
     catch (error) { return Utility.error(error.message); }
 
+    const ccrByBatch = {};
+    ccrRows_(spreadsheet).forEach(record => { const batch=text(record["CDR Batch ID"]);if(batch){if(!ccrByBatch[batch])ccrByBatch[batch]=[];ccrByBatch[batch].push(record);} });
     records.forEach(record => {
       const batchId = text(record["Upload Batch ID"]);
       if (!batchId) return;
       if (!groups[batchId]) {
+        const linked=ccrByBatch[batchId]||[],ccr=linked.length?combinedCcr_(linked):null;
         groups[batchId] = {
           batchId,
           bankingDate: text(record["Banking Date"]),
+          depositionDate: text(record["Banking Date"]),
+          collectionDate: ccr?ccr.__collectionDates.join(", "):"",
+          ccrId: ccr?ccr.__ccrIds.join(", "):"",
           zone: text(record.Zone),
           warehouse: text(record.Warehouse),
           lmHub: text(record["LM Hub"]),
@@ -1205,6 +1599,10 @@ const Banking = (() => {
           uploadedEmail: text(record["Uploaded Email"]),
           uploadedAt: text(record["Uploaded At"]),
           sheetName: text(record.__sheetName),
+          status: ccr?text(ccr.Status):"Legacy CDR",
+          emailSent: ccr?same(ccr["CDR Mail Sent"],"Yes"):false,
+          emailCount: ccr?Number(ccr["Mail Count"]||0):0,
+          lastEmailSentAt: ccr?ccrDto_(ccr).lastMailSentAt:"",
           lineCount: 0
         };
       }
@@ -1246,22 +1644,14 @@ const Banking = (() => {
     if (!records.length) return Utility.error("Banking batch not found in your permitted scope.");
     const first = records[0];
     try {
+      const ccrs=ccrRows_(spreadsheet).filter(record=>same(record["CDR Batch ID"],wanted));
+      if(!ccrs.length)return Utility.error("This is a legacy banking batch without a linked CCR. Same-thread resend is unavailable.");
+      const ccr=combinedCcr_(ccrs);
       const exportRows = records.map(record => BULK_EXPORT_HEADERS.map(header => record[header]));
-      sendUploadMail(
-        spreadsheet,
-        {
-          REGISTERED_EMAIL: text(first["Uploaded Email"]),
-          RIDER_NAME: text(first["Uploaded By"]),
-          USERNAME: text(first["Uploaded By"])
-        },
-        { zone: text(first.Zone), warehouse: text(first.Warehouse), lmHub: text(first["LM Hub"]) },
-        parseIsoDate(parseDisplayDate(first["Banking Date"]), "Banking date"),
-        records.length,
-        { fileUrl: text(first["Banking Slip"]) },
-        wanted,
-        exportRows
-      );
-      return Utility.success("Banking confirmation email sent successfully.", { batchId: wanted });
+      const remarks=text(ccr["CDR Remarks"]||"CDR confirmation email resent.");
+      const threadId=sendCdrMail_(spreadsheet,{REGISTERED_EMAIL:text(first["Uploaded Email"]),RIDER_NAME:text(first["Uploaded By"]),USERNAME:text(first["Uploaded By"])},{zone:text(first.Zone),warehouse:text(first.Warehouse),lmHub:text(first["LM Hub"])},parseIsoDate(parseDisplayDate(first["Banking Date"]),"Cash Deposition date"),records.length,{fileUrl:text(first["Banking Slip"])},wanted,exportRows,ccr,remarks);
+      const sheet=ccrSheet_(spreadsheet),counts=ccrs.map(record=>Number(record["Mail Count"]||0)+1);ccrs.forEach((record,index)=>updateCcr_(sheet,record.__row,{"Mail Thread ID":threadId,"CDR Mail Sent":"Yes","Mail Count":counts[index],"Last Mail Sent At":new Date(),"Status":"CDR Completed"}));
+      return Utility.success("CDR confirmation email sent successfully on the CCR thread.", { batchId: wanted,ccrId:ccr.__ccrIds.join(", "),emailSent:true,emailCount:Math.max.apply(null,counts) });
     } catch (error) {
       return Utility.error("Email was not sent: " + friendlyMailError(error));
     }
@@ -1274,12 +1664,14 @@ const Banking = (() => {
     }
     try {
       const info = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL, [MAIL_SCOPE]);
-      const required = info.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED;
+      const authorizedScopes = info.getAuthorizedScopes() || [];
+      const required = info.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED || authorizedScopes.indexOf(MAIL_SCOPE) === -1;
       return Utility.success(required ? "Email service authorization is required." : "Email service is authorized.", {
         required,
         authorizationUrl: required ? text(info.getAuthorizationUrl()) : "",
         deploymentOwnerEmail: text(Session.getEffectiveUser().getEmail()),
-        authorizedScopes: info.getAuthorizedScopes() || []
+        authorizedScopes,
+        googleConsentRequired: true
       });
     } catch (error) {
       return Utility.error("Unable to check email authorization: " + (text(error.message) || "authorization service failed."));
@@ -1331,6 +1723,8 @@ const Banking = (() => {
     });
 
     if (!matches.length) return Utility.error("Banking batch not found in your permitted scope.");
+    const linkedCcrs=ccrRows_(spreadsheet).filter(record=>same(record["CDR Batch ID"],wanted));
+    if(linkedCcrs.length){const linkedCcr=combinedCcr_(linkedCcrs);meta=Object.assign(meta,{ccrId:linkedCcr.__ccrIds.join(", "),ccrIds:linkedCcr.__ccrIds,collectionDate:linkedCcr.__collectionDates.join(", "),collectionDates:linkedCcr.__collectionDates,depositionDate:ccrIso_(linkedCcr["Cash Deposition Date"]),status:text(linkedCcr.Status),emailSent:linkedCcrs.every(record=>same(record["CDR Mail Sent"],"Yes")),emailCount:Math.max.apply(null,linkedCcrs.map(record=>Number(record["Mail Count"]||0))),lastEmailSentAt:ccrDto_(linkedCcr).lastMailSentAt,cdrRemarks:text(linkedCcr["CDR Remarks"])});}
     const rows = matches.map(record => TEMPLATE_HEADERS.map(header => record[header]));
     return Utility.success(SUCCESS.FETCHED, {
       headers: TEMPLATE_HEADERS.slice(),
@@ -1346,6 +1740,11 @@ const Banking = (() => {
     submit,
     search,
     bulk,
+    submitCcr,
+    updateCcr,
+    resendCcrEmail,
+    dashboard,
+    searchCcr,
     resendEmail,
     mailAuthorization,
     batch,
@@ -1361,12 +1760,19 @@ const Banking = (() => {
  * column in existing monthly Banking sheets without deleting the stored IDs.
  */
 function authorizeBankingServices() {
+  ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, ["https://mail.google.com/"]);
+  const authorizationInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL, ["https://mail.google.com/"]);
+  if (authorizationInfo.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) {
+    throw new Error("Full Gmail permission is still required. Run this function again and approve the Gmail permission in Google's consent screen.");
+  }
+  GmailApp.getInboxThreads(0, 1);
   const remainingRecipients = MailApp.getRemainingDailyQuota();
   const hiddenSheets = Banking.hideTechnicalColumns();
   const result = {
     success: true,
     remainingRecipients,
-    hiddenTechnicalColumnInSheets: hiddenSheets
+    hiddenTechnicalColumnInSheets: hiddenSheets,
+    fullGmailAuthorized: true
   };
   console.log(JSON.stringify(result));
   return result;
