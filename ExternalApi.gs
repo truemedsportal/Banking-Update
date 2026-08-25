@@ -41,3 +41,4 @@ function externalApiJson_(payload) {
     .createTextOutput(JSON.stringify(payload || { success: false }))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
