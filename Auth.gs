@@ -57,12 +57,6 @@ const Auth = (() => {
 
   }
 
-  function sessionDurationMs() {
-    // Attendance operations may take time; all portal sessions are intentionally 10 hours.
-    return 10 * 60 * 60 * 1000;
-
-  }
-
   function sessionKey(id) {
     return SESSION_PREFIX + Utility.safeString(id);
   }
@@ -107,9 +101,9 @@ const Auth = (() => {
 
     const key = sessionKey(id);
     const payload = JSON.stringify({
-        username: Utility.safeString(username),
-        expiresAt: Date.now() + sessionDurationMs()
-      });
+      username: Utility.safeString(username),
+      createdAt: Date.now()
+    });
 
     PropertiesService.getScriptProperties().setProperty(key, payload);
     CacheService.getScriptCache().put(key, payload, 300);
@@ -134,16 +128,12 @@ const Auth = (() => {
 
     try {
       const session = JSON.parse(raw);
-
-      if (!session.expiresAt || Number(session.expiresAt) <= Date.now()) {
-        cache.remove(key);
-        cache.remove(sessionUserKey(id));
-        properties.deleteProperty(key);
-        return null;
-      }
+      if (!Utility.safeString(session && session.username)) return null;
 
       // A short cache avoids repeated Script Properties reads during a page
-      // load while PropertiesService remains the durable 10-hour store.
+      // load while PropertiesService remains the durable, non-expiring store.
+      // Legacy expiresAt fields are intentionally ignored. A session ends only
+      // through an explicit logout or a security event such as password reset.
       cache.put(key, raw, 300);
 
       return session;
@@ -237,8 +227,6 @@ function login(username, password) {
 
     const id = sessionId();
 
-    deleteSession(data.SESSION_ID);
-
     Database.users.saveSession(
       user.row,
       id
@@ -311,10 +299,16 @@ function login(username, password) {
     // User Master sheet. The short TTL still rechecks status and lock changes.
     const cachedUser = CacheService.getScriptCache().get(sessionUserKey(sessionId));
     if (cachedUser) {
-      try { return JSON.parse(cachedUser); } catch (error) {}
+      try {
+        const data = JSON.parse(cachedUser);
+        return data;
+      } catch (error) {}
     }
 
-    const user = Database.users.findBySession(sessionId);
+    // Resolve by the username stored in this token instead of the single
+    // Session ID column. This permits a user to remain signed in on more than
+    // one browser/device until each device is explicitly logged out.
+    const user = findUser(session.username);
 
     if (!user)
       return null;
@@ -450,8 +444,6 @@ function login(username, password) {
     verify,
 
     sessionId,
-
-    sessionDurationMs,
 
     findUser,
 
