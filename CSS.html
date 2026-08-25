@@ -4362,6 +4362,10 @@ body.portal-session-active #appContainer #mainContent {
 .banking-multi-all{position:sticky;top:-8px;z-index:2;border-bottom:1px solid #e5edf5;border-radius:0!important;background:#fff;font-weight:800}
 .banking-multi-empty{padding:12px;color:#718096;font-size:12px;text-align:center}
 .banking-repository-card .table-responsive{max-height:580px}
+.banking-repository-heading{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center!important;gap:18px!important}
+.banking-repository-heading>div{display:block!important;min-width:0}
+.banking-repository-heading h2,.banking-repository-heading p{display:block;max-width:100%;white-space:normal}
+.banking-repository-heading .banking-download-bulk{max-width:280px;white-space:normal;line-height:1.3}
 .banking-repository-table{min-width:1150px;margin:0}
 .banking-repository-table thead th{position:sticky;top:0;z-index:2;background:#f4f8fc}
 .banking-repository-table td{vertical-align:middle}
@@ -4437,6 +4441,7 @@ body.dark-mode .user-manual-quick-link{border-color:#3b526a;background:#1b2a3f;c
 }
 
 @media(max-width:760px){
+    .banking-repository-heading{grid-template-columns:1fr!important}.banking-repository-heading .banking-download-bulk{width:100%;max-width:none}
     .banking-mail-auth{grid-template-columns:auto 1fr}.banking-mail-auth button{grid-column:1/-1;width:100%}
     .banking-page-header,.user-manual-header{align-items:stretch;flex-direction:column}
     .banking-scope-chip{max-width:none;border-radius:12px;text-align:left}
@@ -4466,4 +4471,186 @@ body.dark-mode .user-manual-quick-link{border-color:#3b526a;background:#1b2a3f;c
     .user-manual-role-card,.user-manual-support-card{break-inside:avoid}
 }
 
+.odometer-photo-field small{display:block;margin-top:6px;color:#63758a}.odometer-photo-preview{display:block;width:100%;max-width:260px;max-height:170px;margin-top:10px;border:1px solid #d9e5f1;border-radius:12px;object-fit:contain;background:#f5f8fb}.attendance-evidence-links{display:flex;gap:6px;flex-wrap:wrap}.attendance-evidence-links a{display:inline-flex;padding:5px 8px;border:1px solid #bdd8ee;border-radius:8px;background:#eef7ff;color:#075c9c;font-size:11px;font-weight:800;text-decoration:none}
+</style>
+<style>
+.ccr-section-title{margin:22px 0 12px;color:#213550;font-size:15px}.ccr-denomination-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:12px}.ccr-denomination-grid label{color:#52657d;font-size:12px;font-weight:700}.ccr-denomination-grid input{margin-top:6px}.ccr-total-strip{display:flex;align-items:center;gap:14px;margin:20px 0;padding:16px 18px;border:1px solid #b9ddf8;border-radius:14px;background:linear-gradient(110deg,#eaf6ff,#f8fcff)}.ccr-total-strip span{color:#49657f;font-weight:700}.ccr-total-strip strong{color:#0b5f9d;font-size:24px}.ccr-total-strip small{margin-left:auto;color:#63758a}.banking-leadership-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}.banking-leadership-metrics article{padding:18px;border:1px solid #deebf6;border-radius:16px;background:linear-gradient(145deg,#fff,#f5faff);box-shadow:0 9px 24px rgba(24,74,120,.07)}.banking-leadership-metrics span,.banking-leadership-metrics strong{display:block}.banking-leadership-metrics span{color:#6c7c90;font-size:12px;font-weight:700}.banking-leadership-metrics strong{margin-top:6px;color:#133b63;font-size:24px}.banking-trend-bars{display:grid;gap:10px;padding:20px}.banking-trend-row{display:grid;grid-template-columns:95px 1fr 150px;gap:12px;align-items:center}.banking-trend-track{height:14px;border-radius:99px;background:#e8eef5;overflow:hidden;position:relative}.banking-trend-collected,.banking-trend-deposited{position:absolute;left:0;top:0;height:100%;border-radius:99px}.banking-trend-collected{background:#8ec5ee}.banking-trend-deposited{background:#1c8b59}.banking-mail-chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:800}.banking-mail-chip.sent{background:#e6f7ed;color:#17643b}.banking-mail-chip.pending{background:#fff2d9;color:#8a5700}@media(max-width:900px){.banking-leadership-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ccr-total-strip{align-items:flex-start;flex-direction:column}.ccr-total-strip small{margin-left:0}.banking-trend-row{grid-template-columns:75px 1fr}.banking-trend-row>span:last-child{grid-column:2}}@media(max-width:520px){.banking-leadership-metrics{grid-template-columns:1fr}.ccr-denomination-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.banking-ccr-edit-toolbar{display:grid;grid-template-columns:minmax(280px,520px) 1fr;align-items:end;gap:16px;margin-bottom:18px;padding:14px 16px;border:1px solid #d9e7f3;border-radius:14px;background:#f8fbfe}.banking-edit-lock-note{display:none;padding:12px 14px;border-radius:10px;background:#fff4dc;color:#775000;font-size:12px;font-weight:700}.banking-ccr-edit-toolbar.is-editing .banking-edit-lock-note{display:block}.banking-ccr-actions{display:flex;flex-wrap:wrap;gap:10px}.banking-ccr-actions button{display:inline-flex;align-items:center;gap:6px}@media(max-width:760px){.banking-ccr-edit-toolbar{grid-template-columns:1fr}.banking-ccr-actions button{width:100%;justify-content:center}}
+.banking-ccr-search{margin-bottom:18px;padding:16px;border:1px solid #d9e7f3;border-radius:14px;background:linear-gradient(135deg,#fbfdff,#f4f9fe)}.banking-ccr-search-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.banking-ccr-search-heading h3{margin:0 0 3px;color:#20354f;font-size:15px}.banking-ccr-search-heading p{margin:0;color:#718096;font-size:12px}.banking-ccr-search-heading>span{padding:5px 9px;border-radius:999px;background:#e7f2fc;color:#225c8b;font-size:11px;font-weight:800}.banking-ccr-search-grid{display:grid;grid-template-columns:minmax(240px,1.5fr) minmax(155px,.75fr) minmax(155px,.75fr) auto;align-items:end;gap:12px}.banking-ccr-search-actions{display:flex;gap:8px}.banking-ccr-search-actions button{display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}.banking-ccr-search-results{margin-top:16px;max-height:360px;overflow:auto;border:1px solid #e3ebf4;border-radius:12px;background:#fff}.banking-ccr-search-results table{margin:0}.banking-ccr-search-results td:first-child{font-weight:800;white-space:nowrap}.banking-ccr-search-results .secondary-btn{padding:7px 10px;white-space:nowrap}.banking-ccr-locked{display:inline-flex;padding:5px 8px;border-radius:999px;background:#edf1f5;color:#66788d;font-size:11px;font-weight:800}
+.banking-amount-match{display:grid;grid-template-columns:auto minmax(190px,1fr) minmax(480px,1.7fr);align-items:center;gap:14px;margin:14px 0;padding:15px 17px;border:1px solid #b8c9db;border-radius:14px;background:#f5f8fb;color:#31465e}.banking-amount-match>span{font-size:30px}.banking-amount-match strong{display:block;margin-bottom:4px}.banking-amount-match p{margin:0;font-size:12px;line-height:1.45}.banking-amount-match dl{display:grid;grid-template-columns:repeat(5,minmax(90px,1fr));gap:8px;margin:0}.banking-amount-match dl>div{padding:9px 10px;border-radius:10px;background:rgba(255,255,255,.72)}.banking-amount-match dt{color:#718096;font-size:10px;font-weight:800;text-transform:uppercase}.banking-amount-match dd{margin-top:3px;font-size:14px;font-weight:900}.banking-amount-match.matches{border-color:#83d3a6;background:#eaf9f0;color:#145b35}.banking-amount-match.mismatch{border-color:#f0a3a3;background:#fff0f0;color:#8d1e1e;box-shadow:0 0 0 3px rgba(220,38,38,.06)}#btnSubmitBanking:disabled{cursor:not-allowed;filter:grayscale(.35);opacity:.48}
+body.dark-mode .banking-ccr-search,body.dark-mode .banking-ccr-edit-toolbar{border-color:#334155;background:#162033}body.dark-mode .banking-ccr-search-heading h3{color:#edf6ff}body.dark-mode .banking-ccr-search-results{border-color:#334155;background:#111c2d}body.dark-mode .banking-amount-match{border-color:#41566c;background:#172235;color:#d8e5f2}body.dark-mode .banking-amount-match dl>div{background:rgba(9,18,31,.5)}body.dark-mode .banking-amount-match.matches{border-color:#287a4c;background:#153326;color:#a8e7c2}body.dark-mode .banking-amount-match.mismatch{border-color:#9d3b3b;background:#3a1b1b;color:#ffc1c1}
+@media(max-width:900px){.banking-ccr-search-grid{grid-template-columns:1fr 1fr}.banking-ccr-search-grid .form-group:first-child{grid-column:1/-1}.banking-ccr-search-actions{align-self:end}.banking-amount-match{grid-template-columns:auto 1fr}.banking-amount-match dl{grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.banking-ccr-search-heading{flex-direction:column}.banking-ccr-search-grid{grid-template-columns:1fr}.banking-ccr-search-grid .form-group:first-child{grid-column:auto}.banking-ccr-search-actions{display:grid;grid-template-columns:1fr 1fr}.banking-amount-match{grid-template-columns:1fr}.banking-amount-match>span{display:none}.banking-amount-match dl{grid-column:auto;grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* UAT layout reset.
+   Never simulate browser zoom on the application shell. CSS zoom enlarged the
+   canvas beyond the viewport, which made tables, sticky controls and cards
+   overlap at 90/100% browser zoom. Density now comes from responsive spacing. */
+body.portal-session-active #appContainer{
+  width:100%;
+  max-width:100vw;
+  height:100vh;
+  height:100dvh;
+  min-height:0;
+  zoom:1;
+}
+body.portal-session-active #appContainer .content-wrapper,
+body.portal-session-active #appContainer #mainContent{
+  max-width:100%;
+  min-width:0;
+}
+body.portal-session-active #appContainer #mainContent{
+  padding:clamp(16px,1.55vw,26px);
+}
+#appContainer .page-container,
+#appContainer .dashboard-container{
+  width:min(100%,1680px);
+  margin-inline:auto;
+}
+#appContainer .card,
+#appContainer .dashboard-panel,
+#appContainer .rider-content-card,
+#appContainer .banking-card{
+  min-width:0;
+}
+#appContainer .table-responsive{
+  display:block;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+}
+#appContainer .table-responsive>.table{
+  min-width:720px;
+}
+#appContainer .form-grid>*{
+  min-width:0;
+}
+.banking-page-header,.page-header,.dashboard-page-header{
+  flex-wrap:wrap;
+}
+.banking-tabbar{
+  max-width:100%;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+}
+.banking-dashboard-table-wrap{max-height:520px;overflow:auto}
+.rider-bar-list{max-height:560px;overflow:auto;overscroll-behavior:contain}
+.rider-content-card>.table-responsive{max-height:620px;overflow:auto}
+.rider-content-card>.table-responsive thead,
+.banking-dashboard-table-wrap thead{position:sticky;top:0;z-index:2;background:#f7f9fc}
+
+@media(max-width:1200px){
+  .dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .banking-leadership-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:768px){
+  body.portal-session-active #appContainer #mainContent{padding:66px 12px calc(16px + env(safe-area-inset-bottom))}
+  #appContainer .page-container,#appContainer .dashboard-container{width:100%}
+  #appContainer .table-responsive>.table{min-width:640px}
+  .dashboard-cards,.banking-leadership-metrics{grid-template-columns:1fr}
+  .banking-tabbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;overflow:visible}
+}
+.login-recovery-link{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;margin:10px 0 17px;padding:10px 12px;border:1px solid #d8e7f4;border-radius:10px;background:#f7fbff;color:#1267b5;font-size:12px;font-weight:800;cursor:pointer;text-align:center}.login-recovery-link .material-symbols-outlined{font-size:18px}.login-recovery-link:hover{border-color:#9cc8eb;background:#edf7ff;transform:translateY(-1px)}.password-recovery-modal .modal-content{max-width:560px}.password-recovery-intro{display:flex;gap:12px;margin-bottom:17px;padding:14px;border:1px solid #d7e8f6;border-radius:12px;background:linear-gradient(135deg,#f4faff,#eef7ff);color:#24445f}.password-recovery-intro>.material-symbols-outlined{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:12px;background:#1267b5;color:#fff}.password-recovery-intro strong{display:block;margin-bottom:4px}.password-recovery-intro p{margin:0;color:#61758a;font-size:13px;line-height:1.5}.password-recovery-message{margin-top:13px;padding:11px 13px;border-radius:10px;background:#eef6ff;color:#245f91;font-size:12px;line-height:1.45}.password-recovery-message.success{background:#eaf8f0;color:#17643b}.password-recovery-message.error{background:#fff0f0;color:#9e2929}.password-recovery-actions{flex-wrap:wrap}.password-recovery-actions button{display:inline-flex;align-items:center;justify-content:center;gap:6px}.password-recovery-actions .material-symbols-outlined{font-size:18px}.cdr-mismatch-modal{background:rgba(10,22,38,.68);backdrop-filter:blur(4px)}.cdr-mismatch-modal .modal-content{max-width:720px;border-top:6px solid #dc2626}.cdr-mismatch-header{justify-content:flex-start;background:#fff2f2;color:#991b1b}.cdr-mismatch-header .material-symbols-outlined{font-size:29px}.cdr-mismatch-error{padding:12px;border:1px solid #efb4b4;border-radius:10px;background:#fff2f2;color:#991b1b;font-weight:700}.cdr-mismatch-steps{margin:16px 0 0;padding-left:23px;color:#42566f;font-size:13px;line-height:1.55}.cdr-mismatch-steps li{margin:7px 0}.cdr-mismatch-modal .modal-footer{justify-content:center}.cdr-mismatch-modal .primary-btn{min-width:210px}@media(max-width:600px){.remember-row{align-items:flex-start}.login-recovery-link{text-align:center}.password-recovery-actions button{width:100%}.cdr-mismatch-modal .modal-content{max-height:92vh;overflow:auto}}
+
+.remember-row{justify-content:flex-start;gap:10px;margin-bottom:0}.remember-label{flex:0 0 auto;white-space:nowrap}.login-recovery-link{min-width:0;line-height:1.35}
+/* Selective CCR picker and leadership charts. */
+.banking-ccr-picker{position:relative}.banking-ccr-picker>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:46px;padding:11px 13px;border:1px solid #d6e1ed;border-radius:10px;background:#fff;color:#253b55;cursor:pointer;list-style:none}.banking-ccr-picker>summary::-webkit-details-marker{display:none}.banking-ccr-picker[open]>summary{border-color:#2983c7;box-shadow:0 0 0 3px rgba(27,116,186,.12)}.banking-ccr-picker-menu{position:absolute;z-index:50;top:calc(100% + 7px);left:0;width:min(620px,calc(100vw - 40px));max-width:100%;padding:10px;border:1px solid #d8e4ef;border-radius:13px;background:#fff;box-shadow:0 20px 45px rgba(22,50,84,.2)}.banking-ccr-picker-search{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #dce6f0;border-radius:9px;background:#f8fbfe}.banking-ccr-picker-search input{width:100%;border:0;outline:0;background:transparent;color:#21354d}.banking-ccr-picker-options{max-height:280px;margin-top:8px;overflow:auto}.banking-ccr-option{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border-radius:9px;cursor:pointer}.banking-ccr-option:hover{background:#eef7ff}.banking-ccr-option strong,.banking-ccr-option small{display:block}.banking-ccr-option small{margin-top:2px;color:#6f8094}.banking-ccr-option>span:last-child{color:#135e98;font-weight:900;white-space:nowrap}.banking-selected-ccr-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.banking-selected-ccr-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;background:#e8f4ff;color:#145d97;font-size:11px;font-weight:800}.banking-dashboard-filters{margin-bottom:16px}.banking-dashboard-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;align-items:end}.banking-dashboard-filter-grid>.primary-btn{min-height:44px}.banking-vertical-chart{display:flex;align-items:flex-end;gap:14px;min-height:300px;padding:24px;overflow-x:auto;background:linear-gradient(180deg,#fff,#f7fbff)}.banking-vertical-group{display:grid;grid-template-columns:repeat(2,24px);grid-template-rows:230px auto;gap:7px;flex:0 0 72px;align-items:end;justify-content:center}.banking-vertical-column{align-self:end;width:24px;min-height:3px;border-radius:8px 8px 3px 3px}.banking-vertical-column.collected{background:#86c6ef}.banking-vertical-column.deposited{background:#188e5a}.banking-vertical-label{grid-column:1/-1;max-width:100px;overflow:hidden;color:#4f6278;font-size:10px;font-weight:800;text-align:center;text-overflow:ellipsis;white-space:nowrap}.banking-chart-empty{margin:auto;color:#718096}.banking-chart-legend{display:flex;align-items:center;gap:16px;padding:0 24px 18px;color:#66778b;font-size:12px}.banking-chart-legend small{margin-left:auto;color:#52677e;font-weight:800}.banking-chart-legend i{display:inline-block;width:10px;height:10px;margin-right:6px;border-radius:3px}.banking-chart-legend .collected{background:#86c6ef}.banking-chart-legend .deposited{background:#188e5a}.banking-tolerance-note{font-weight:800;color:#17643b}
+.banking-cdr-selection{margin-bottom:16px;padding:16px;border:1px solid #cfe2f2;border-radius:15px;background:linear-gradient(135deg,#f8fcff,#eef7ff)}.banking-cdr-selection-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:13px}.banking-cdr-selection-head>div{display:flex;gap:11px;align-items:flex-start}.banking-cdr-selection-head>div>.material-symbols-outlined{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:12px;background:#1267b5;color:#fff}.banking-cdr-selection-head h3{margin:0 0 4px;color:#193a5c;font-size:16px}.banking-cdr-selection-head p{max-width:780px;margin:0;color:#66798e;font-size:12px;line-height:1.5}.banking-combined-badge{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:#def5e9;color:#14663b;font-size:10px;font-weight:900;white-space:nowrap}.banking-ccr-selection-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.banking-ccr-selection-actions button{display:inline-flex;align-items:center;gap:6px;padding:8px 11px}.banking-ccr-selection-actions .material-symbols-outlined{font-size:17px}.banking-ccr-option:has(input:checked){background:#e6f4ff;box-shadow:inset 3px 0 #1474bf}.banking-ccr-option input{width:17px;height:17px;accent-color:#1474bf}.banking-selected-ccr-chip:before{content:"✓";display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#1474bf;color:#fff;font-size:10px}.banking-cdr-selection+.banking-location-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.banking-vertical-chart{display:block;min-height:330px;padding:22px 0 18px;overflow:hidden}.banking-chart-scroll{width:100%;overflow-x:auto;overscroll-behavior-inline:contain}.banking-chart-columns{display:flex;align-items:stretch;gap:16px;min-width:max-content;height:286px;padding:0 24px}.banking-chart-column{display:grid;grid-template-rows:46px 1fr 42px;flex:0 0 112px;min-width:0;text-align:center}.banking-chart-values{display:grid;gap:2px;align-content:start;overflow:visible;color:#52677e;font-size:9px;font-weight:900;white-space:nowrap}.banking-chart-values .collected-value{color:#3d79a4}.banking-chart-values .deposited-value{color:#147547}.banking-chart-bars{display:flex;align-items:flex-end;justify-content:center;gap:7px;min-height:0;border-bottom:1px solid #dce7f1;background:repeating-linear-gradient(to top,transparent 0,transparent 46px,rgba(198,214,229,.32) 47px)}.banking-chart-bars i{display:block;width:25px;min-height:3px;border-radius:8px 8px 2px 2px}.banking-chart-bars .collected{background:#86c6ef}.banking-chart-bars .deposited{background:#188e5a}.banking-chart-column>strong{align-self:center;color:#44596f;font-size:10px;line-height:1.2;white-space:normal;word-break:break-word}
+@media(max-width:1000px){.banking-dashboard-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.banking-dashboard-filter-grid>.primary-btn{width:100%}}
+@media(max-width:600px){.banking-dashboard-filter-grid{grid-template-columns:1fr}.banking-cdr-selection-head{display:block}.banking-combined-badge{display:inline-flex;margin-top:10px}.banking-ccr-selection-actions{display:grid;grid-template-columns:1fr}.banking-ccr-picker-menu{position:fixed;inset:auto 12px 16px;width:auto;max-width:none;max-height:70vh}.banking-ccr-picker-options{max-height:50vh}.banking-vertical-chart{min-height:260px;padding:18px 14px}.banking-vertical-group{grid-template-rows:190px auto}}
+
+/* Final shell guard: flex children must shrink inside the viewport instead of
+   using the width of large tables/charts as their minimum canvas size. */
+@media(min-width:769px){
+  body.portal-session-active #appContainer .content-wrapper{
+    flex:1 1 0;
+    width:0;
+    min-width:0;
+    max-width:none;
+    overflow-x:hidden;
+  }
+}
+body.portal-session-active #appContainer #mainContent,
+body.portal-session-active #appContainer .page,
+body.portal-session-active #appContainer .page-container{
+  min-width:0;
+  max-width:100%;
+}
+body.portal-session-active #appContainer .page{
+  overflow-x:clip;
+}
+body.portal-session-active #appContainer .page.active{
+  display:block;
+  opacity:1;
+  visibility:visible;
+}
+#appContainer .card-body>*{
+  max-width:100%;
+  min-width:0;
+}
+@media(max-width:1180px){
+  .banking-cdr-selection+.banking-location-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .banking-cdr-selection+.banking-location-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .login-container{display:block;min-height:100svh}
+  .login-left{min-height:245px;padding:22px 20px}
+  .login-brand{max-width:310px;transform:none}
+  .login-brand img{width:112px;max-height:112px}
+  .login-brand h2{margin:14px 0 0;font-size:20px;line-height:1.2}
+  .login-brand p{margin:12px 0 0;font-size:14px;letter-spacing:.5px}
+  .login-right{min-height:0;padding:16px;align-items:flex-start}
+  .login-card{max-width:420px;padding:24px;border-radius:16px}
+  .login-card h2{font-size:28px;margin-bottom:7px}
+  .login-card>p{margin-bottom:24px}
+  .remember-row{margin-top:15px}
+  .login-recovery-link{margin:9px 0 14px}
+  .login-card .primary-btn{padding:13px}
+  .login-footer{margin-top:18px}
+}
+/* Android PWA route guard: mobile views must not depend on an animation's
+   retained opacity/transform state. This prevents the post-login blank canvas. */
+@media (max-width:768px), (hover:none) and (pointer:coarse){
+  body.portal-session-active #appContainer,
+  body.portal-session-active #appContainer .content-wrapper,
+  body.portal-session-active #appContainer #mainContent{
+    position:relative;
+    visibility:visible;
+    opacity:1;
+  }
+  body.portal-session-active #appContainer .page.active{
+    display:block!important;
+    width:100%;
+    min-height:1px;
+    opacity:1!important;
+    visibility:visible!important;
+    transform:none!important;
+    animation:none!important;
+  }
+}
+.inline-refreshing{
+  position:relative!important;
+  min-width:max-content;
+  padding-right:42px!important;
+  cursor:progress!important;
+  opacity:1!important;
+}
+.inline-refreshing::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  right:14px;
+  width:17px;
+  height:17px;
+  margin-top:-8.5px;
+  border-radius:50%;
+  background:conic-gradient(from 0deg,#20c997,#1683d8,#7c3aed,#20c997);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);
+  animation:inline-refresh-spin .72s linear infinite;
+}
+@keyframes inline-refresh-spin{to{transform:rotate(1turn)}}
+@media(prefers-reduced-motion:reduce){.inline-refreshing::after{animation-duration:1.8s}}
 </style>
